@@ -25,10 +25,21 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
-path_data = 'data/samples'
-path_metadata = os.path.join(path_data, 'metadata')
+DEBUG = True
+
+if DEBUG:
+    PATH_DATA = 'data/samples'
+    NB_EPOCHS = 20
+    PATIENCE = 1000
+    BATCH_SIZE = 1
+else:
+    PATH_DATA = 'data'
+    NB_EPOCHS = 100
+    PATIENCE = 6
+    BATCH_SIZE = 10
+
+PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 1
 torch.manual_seed(0)
 
 class ImagesDS(D.Dataset):
@@ -60,13 +71,16 @@ class ImagesDS(D.Dataset):
     def __len__(self):
         return self.len
 
-df = pd.read_csv(path_metadata+'/train.csv')
+df = pd.read_csv(PATH_METADATA+'/train.csv')
 df_train, df_val = train_test_split(df, test_size = 0.025, random_state=42)
-df_test = pd.read_csv(path_metadata+'/test.csv')
+df_test = pd.read_csv(PATH_METADATA+'/test.csv')
+print('Size training dataset: {}'.format(len(df_train)))
+print('Size validation dataset: {}'.format(len(df_val)))
+print('Size test dataset: {}\n'.format(len(df_test)))
 
-ds = ImagesDS(df_train, path_data, mode='train')
-ds_val = ImagesDS(df_val, path_data, mode='train')
-ds_test = ImagesDS(df_test, path_data, mode='test')
+ds = ImagesDS(df_train, PATH_DATA, mode='train')
+ds_val = ImagesDS(df_val, PATH_DATA, mode='train')
+ds_test = ImagesDS(df_test, PATH_DATA, mode='test')
 
 classes = 1108
 model = models.resnet18(pretrained=True)
@@ -80,9 +94,9 @@ with torch.no_grad():
     new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
 model.conv1 = new_conv
 
-loader = D.DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=4)
-val_loader = D.DataLoader(ds_val, batch_size=batch_size, shuffle=True, num_workers=4)
-tloader = D.DataLoader(ds_test, batch_size=batch_size, shuffle=False, num_workers=4)
+loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -112,7 +126,7 @@ def update_lr_scheduler(engine):
     lr = float(optimizer.param_groups[0]['lr'])
     print('Learning rate: {}'.format(lr))
 
-handler = EarlyStopping(patience=6, score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
+handler = EarlyStopping(patience=PATIENCE, score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
 val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
 @trainer.on(Events.EPOCH_STARTED)
@@ -147,7 +161,7 @@ tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_n
 tb_logger.attach(trainer, log_handler=GradsHistHandler(model), event_name=Events.EPOCH_COMPLETED)
 tb_logger.close()
 
-trainer.run(loader, max_epochs=50)
+trainer.run(loader, max_epochs=NB_EPOCHS)
 
 model.eval()
 with torch.no_grad():
@@ -158,6 +172,6 @@ with torch.no_grad():
         idx = output.max(dim=-1)[1].cpu().numpy()
         preds = np.append(preds, idx, axis=0)
 
-submission = pd.read_csv(path_metadata + '/test.csv')
+submission = pd.read_csv(PATH_METADATA + '/test.csv')
 submission['sirna'] = preds.astype(int)
 submission.to_csv('submission.csv', index=False, columns=['id_code','sirna'])
