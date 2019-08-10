@@ -25,6 +25,10 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
+print('Number of GPUs available: {}\n'.format(torch.cuda.device_count()))
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.manual_seed(0)
+
 DEBUG = True
 
 if DEBUG:
@@ -38,9 +42,10 @@ else:
     PATIENCE = 6
     BATCH_SIZE = 10
 
+if torch.cuda.is_available():
+    BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
+
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-torch.manual_seed(0)
 
 class ImagesDS(D.Dataset):
     def __init__(self, df, img_dir, mode='train', site=1, channels=[1,2,3,4,5,6]):
@@ -93,6 +98,9 @@ new_conv = nn.Conv2d(6, 64, kernel_size=7, stride=2, padding=3, bias=False)
 with torch.no_grad():
     new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
 model.conv1 = new_conv
+
+if torch.cuda.is_available() > 1:
+    model = torch.nn.DataParallel(model)
 
 loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
