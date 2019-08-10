@@ -1,0 +1,10 @@
+Image==1.5.27
+git+https://github.com/pytorch/ignite.git
+ipywidgets==7.5.1
+numpy==1.17.0
+pandas==0.25.0
+sklearn==0.0
+tensorboardX==1.8
+tqdm==4.33.0
+torch==1.2.0
+torchvision==0.4.0

@@ -1,3 +1,11 @@
+data/
+.vscode/
+board/
+models/
+submission.csv
+
+#### Default gitignore from github:
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
