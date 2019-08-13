@@ -25,13 +25,14 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
-print('Number of GPUs available: {}\n'.format(torch.cuda.device_count()))
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-torch.manual_seed(0)
+import argparse
 
-DEBUG = True
+parser = argparse.ArgumentParser(description="My parser")
+parser.add_argument('--debug', default=False, action='store_true')
+args = parser.parse_args()
+debug = args.debug
 
-if DEBUG:
+if debug:
     PATH_DATA = 'data/samples'
     NB_EPOCHS = 20
     PATIENCE = 1000
@@ -44,8 +45,12 @@ else:
 
 if torch.cuda.is_available():
     BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
-
+    
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
+
+print('Number of GPUs available: {}\n'.format(torch.cuda.device_count()))
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.manual_seed(0)
 
 class ImagesDS(D.Dataset):
     def __init__(self, df, img_dir, mode='train', site=1, channels=[1,2,3,4,5,6]):
