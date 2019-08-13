@@ -41,7 +41,7 @@ else:
     PATH_DATA = 'data'
     NB_EPOCHS = 100
     PATIENCE = 6
-    BATCH_SIZE = 10
+    BATCH_SIZE = 300
 
 if torch.cuda.is_available():
     BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
@@ -82,7 +82,7 @@ class ImagesDS(D.Dataset):
         return self.len
 
 df = pd.read_csv(PATH_METADATA+'/train.csv')
-df_train, df_val = train_test_split(df, test_size = 0.025, random_state=42)
+df_train, df_val = train_test_split(df, test_size = 0.1, random_state=42)
 df_test = pd.read_csv(PATH_METADATA+'/test.csv')
 print('Size training dataset: {}'.format(len(df_train)))
 print('Size validation dataset: {}'.format(len(df_val)))
@@ -107,9 +107,9 @@ model.conv1 = new_conv
 if torch.cuda.is_available() > 1:
     model = torch.nn.DataParallel(model)
 
-loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=os.cpu_count())
+val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=os.cpu_count())
+tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=os.cpu_count())
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
