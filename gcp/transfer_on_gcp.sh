@@ -1,10 +1,8 @@
 # load configuration
-cd ../scripts_gcloud/
-source config_gcloud.sh
-cd -
+source config_gcp.sh
 
 # prepare copy of repo
-cd ..
+cd ../..
 REPO=recursion-cellular-image-classification
 TEMP_DIR=temp_dir
 cp -r $REPO $TEMP_DIR
@@ -13,13 +11,10 @@ git clean -xdf
 rm -rf .git
 
 # transfer repo
-DIR=$PWD
-echo $DIR
-
-gcloud compute scp --recurse $DIR/* "$INSTANCE_NAME:~"
+gcloud compute scp --recurse * "$INSTANCE_NAME:~"
 while [ $? -ne 0 ]; do
     sleep 15
-    gcloud compute scp --recurse $DIR/* "$INSTANCE_NAME:~"
+    gcloud compute scp --recurse * "$INSTANCE_NAME:~"
 done
 
 # delete copy of repo

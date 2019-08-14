@@ -1,0 +1,9 @@
+#!/bin/zsh
+PROJECT="deep-learning-dql"
+IMAGE_FAMILY="pytorch-latest-gpu"
+ZONE="europe-west4-a"
+INSTANCE_NAME="server1"
+NB_CPU="12"
+MEMORY_SIZE="50"
+ACCELERATOR="type=nvidia-tesla-v100,count=1"
+IP_ADDRESS="35.204.106.19"
