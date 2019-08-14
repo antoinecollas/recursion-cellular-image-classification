@@ -40,8 +40,8 @@ if debug:
 else:
     PATH_DATA = 'data'
     NB_EPOCHS = 100
-    PATIENCE = 6
-    BATCH_SIZE = 300
+    PATIENCE = 3
+    BATCH_SIZE = 64
 
 if torch.cuda.is_available():
     BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
