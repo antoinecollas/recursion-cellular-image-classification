@@ -1,7 +1,7 @@
 #!/bin/zsh
 PROJECT="deep-learning-dql"
 IMAGE_FAMILY="pytorch-latest-gpu"
-ZONE="europe-west4-a"
+ZONE="europe-west4-b"
 INSTANCE_NAME="server1"
 NB_CPU="12"
 MEMORY_SIZE="50"
