@@ -120,27 +120,6 @@ metrics = {
 }
 
 trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
-val_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
-
-@trainer.on(Events.EPOCH_COMPLETED)
-def compute_and_display_val_metrics(engine):
-    epoch = engine.state.epoch
-    metrics = val_evaluator.run(val_loader).metrics
-    print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
-          .format(engine.state.epoch, 
-                      metrics['loss'], 
-                      metrics['accuracy']))
-
-lr_scheduler = ExponentialLR(optimizer, gamma=0.95)
-
-@trainer.on(Events.EPOCH_COMPLETED)
-def update_lr_scheduler(engine):
-    lr_scheduler.step()
-    lr = float(optimizer.param_groups[0]['lr'])
-    print('Learning rate: {}'.format(lr))
-
-handler = EarlyStopping(patience=PATIENCE, score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
-val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
 @trainer.on(Events.EPOCH_STARTED)
 def turn_on_layers(engine):
@@ -161,11 +140,35 @@ def turn_on_layers(engine):
             for param in child.parameters():
                 param.requires_grad = True
 
-checkpoints = ModelCheckpoint('models', 'Model', save_interval=3, n_saved=3, create_dir=True)
-trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoints, {'ResNet18': model})
-
 pbar = ProgressBar(bar_format='')
 pbar.attach(trainer, output_transform=lambda x: {'loss': x})
+
+val_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
+handler = EarlyStopping(patience=PATIENCE, score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
+val_evaluator.add_event_handler(Events.COMPLETED, handler)
+
+@trainer.on(Events.EPOCH_COMPLETED)
+def compute_and_display_val_metrics(engine):
+    epoch = engine.state.epoch
+    metrics = val_evaluator.run(val_loader).metrics
+    
+    if (epoch == 1) or (metrics['accuracy'] > engine.state.best_acc):
+        engine.state.best_acc = metrics['accuracy']
+        print(f'\nNew best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!\n\n\n')
+        torch.save(model.state_dict(), 'models/best_model.pth')
+
+    print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
+          .format(engine.state.epoch, 
+                      metrics['loss'], 
+                      metrics['accuracy']))
+
+lr_scheduler = ExponentialLR(optimizer, gamma=0.95)
+
+@trainer.on(Events.EPOCH_COMPLETED)
+def update_lr_scheduler(engine):
+    lr_scheduler.step()
+    lr = float(optimizer.param_groups[0]['lr'])
+    print('Learning rate: {}'.format(lr))
 
 tb_logger = TensorboardLogger('board/ResNet18')
 tb_logger.attach(trainer, log_handler=OutputHandler(tag='training', output_transform=lambda loss: {'loss': loss}), event_name=Events.ITERATION_COMPLETED)
@@ -176,6 +179,7 @@ tb_logger.close()
 
 trainer.run(loader, max_epochs=NB_EPOCHS)
 
+model.load_state_dict(torch.load('models/best_model.pth'))
 model.eval()
 with torch.no_grad():
     preds = np.empty(0)
