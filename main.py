@@ -1,6 +1,6 @@
 import os
 
-import numpy as np 
+import numpy as np
 import pandas as pd
 
 from PIL import Image
@@ -18,7 +18,7 @@ from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
 
-from tqdm import tqdm_notebook
+from tqdm import tqdm
 
 from sklearn.model_selection import train_test_split
 
@@ -34,18 +34,25 @@ debug = args.debug
 
 if debug:
     PATH_DATA = 'data/samples'
-    NB_EPOCHS = 20
+    NB_EPOCHS = 5
     PATIENCE = 1000
     BATCH_SIZE = 1
 else:
     PATH_DATA = 'data'
     NB_EPOCHS = 100
     PATIENCE = 3
-    BATCH_SIZE = 64
+    BATCH_SIZE = 20
 
 if torch.cuda.is_available():
     BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
-    
+
+if torch.cuda.device_count() == 8:
+    LR = 0.01
+elif torch.cuda.device_count() == 4:
+    LR = 0.005
+else:
+    LR = 0.001
+
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
 print('Number of GPUs available: {}\n'.format(torch.cuda.device_count()))
@@ -93,7 +100,7 @@ ds_val = ImagesDS(df_val, PATH_DATA, mode='train')
 ds_test = ImagesDS(df_test, PATH_DATA, mode='test')
 
 classes = 1108
-model = models.resnet18(pretrained=True)
+model = models.resnext50_32x4d(pretrained=True)
 num_ftrs = model.fc.in_features
 model.fc = torch.nn.Linear(num_ftrs, classes)
 
@@ -104,15 +111,15 @@ with torch.no_grad():
     new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
 model.conv1 = new_conv
 
-if torch.cuda.is_available() > 1:
-    model = torch.nn.DataParallel(model)
+model = torch.nn.DataParallel(model)
 
-loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=os.cpu_count())
-val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=os.cpu_count())
-tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=os.cpu_count())
+num_workers = os.cpu_count()
+loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)
+val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)
+tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
 metrics = {
     'loss': Loss(criterion),
@@ -125,17 +132,19 @@ trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
 def turn_on_layers(engine):
     epoch = engine.state.epoch
     if epoch == 1:
-        for name, child in model.named_children():
+        temp = next(model.named_children())[1]
+        for name, child in temp.named_children():
             if name == 'fc':
-                pbar.log_message(name + ' is unfrozen')
+                print(name + ' is unfrozen')
                 for param in child.parameters():
                     param.requires_grad = True
             else:
-                pbar.log_message(name + ' is frozen')
+                print(name + ' is frozen')
                 for param in child.parameters():
                     param.requires_grad = False
+
     if epoch == 3:
-        pbar.log_message('Turn on all the layers')
+        print('Turn on all the layers')
         for name, child in model.named_children():
             for param in child.parameters():
                 param.requires_grad = True
@@ -154,7 +163,9 @@ def compute_and_display_val_metrics(engine):
     
     if (epoch == 1) or (metrics['accuracy'] > engine.state.best_acc):
         engine.state.best_acc = metrics['accuracy']
-        print(f'\nNew best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!\n\n\n')
+        print(f'\nNew best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
+        if not os.path.exists('models/'):
+            os.makedirs('models/')
         torch.save(model.state_dict(), 'models/best_model.pth')
 
     print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
@@ -183,7 +194,7 @@ model.load_state_dict(torch.load('models/best_model.pth'))
 model.eval()
 with torch.no_grad():
     preds = np.empty(0)
-    for x, _ in tqdm_notebook(tloader): 
+    for x, _ in tqdm(tloader):
         x = x.to(device)
         output = model(x)
         idx = output.max(dim=-1)[1].cpu().numpy()
