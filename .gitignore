@@ -2,7 +2,7 @@ data/
 .vscode/
 board/
 models/
-submission.csv
+submission*.csv
 
 #### Default gitignore from github:
 
