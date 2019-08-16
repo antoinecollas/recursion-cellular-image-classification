@@ -5,6 +5,7 @@ source config_gcp.sh
 cd ../..
 REPO=recursion-cellular-image-classification
 TEMP_DIR=temp_dir
+rm -rf $TEMP_DIR
 cp -r $REPO $TEMP_DIR
 cd $TEMP_DIR
 git clean -xdf
