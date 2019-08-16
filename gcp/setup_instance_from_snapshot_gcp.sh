@@ -10,8 +10,7 @@ gcloud compute disks create $INSTANCE_NAME \
 gcloud beta compute instances create $INSTANCE_NAME \
     --project=$PROJECT \
     --zone=$ZONE \
-    --custom-cpu=$NB_CPU \
-    --custom-memory=$MEMORY_SIZE \
+    --machine-type=$MACHINE_TYPE \
     --maintenance-policy=TERMINATE \
     --accelerator=$ACCELERATOR \
     --disk=name=$INSTANCE_NAME,device-name=$INSTANCE_NAME,mode=rw,boot=yes,auto-delete=yes \
