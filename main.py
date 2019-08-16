@@ -1,16 +1,16 @@
 import os
+import datetime
+import argparse
+from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
 
-from PIL import Image
-
 import torch
-import torch.nn as nn
 import torch.utils.data as D
-from torch.optim.lr_scheduler import ExponentialLR
+import torch.nn as nn
 
-from torchvision import models, transforms as T
+from torchvision import models
 
 from ignite.engine import Events, create_supervised_evaluator, create_supervised_trainer
 from ignite.metrics import Loss, Accuracy
@@ -18,20 +18,31 @@ from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
 
-from tqdm import tqdm
-
 from sklearn.model_selection import train_test_split
 
-import warnings
-warnings.filterwarnings('ignore')
+from data_loader import ImagesDS
 
-import argparse
+# import warnings
+# warnings.filterwarnings('ignore')
+
+hour = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
 parser = argparse.ArgumentParser(description="My parser")
 parser.add_argument('--debug', default=False, action='store_true')
+parser.add_argument('--pretrain', default=False, action='store_true')
+parser.add_argument('--scheduler', default=False, action='store_true')
+if torch.cuda.is_available():
+    parser.add_argument('--gpu_id', type=int, choices=range(0, torch.cuda.device_count()))
+
 args = parser.parse_args()
 debug = args.debug
-
+pretrain = args.pretrain
+scheduler = args.scheduler
+if torch.cuda.is_available():
+    gpu_id = args.gpu_id
+else:
+    gpu_id = None
+    
 if debug:
     PATH_DATA = 'data/samples'
     NB_EPOCHS = 5
@@ -41,52 +52,31 @@ else:
     PATH_DATA = 'data'
     NB_EPOCHS = 100
     PATIENCE = 3
-    BATCH_SIZE = 20
-
-if torch.cuda.is_available():
-    BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
-
-if torch.cuda.device_count() == 8:
-    LR = 0.01
-elif torch.cuda.device_count() == 4:
-    LR = 0.005
-else:
-    LR = 0.001
-
+    BATCH_SIZE = 80
+    
+LR = 0.001
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
-print('Number of GPUs available: {}\n'.format(torch.cuda.device_count()))
+if torch.cuda.is_available() and (gpu_id is None):
+    BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
+
+if gpu_id is None:
+    num_workers = int(0.75*os.cpu_count())
+elif torch.cuda.is_available():
+    num_workers = int(0.75*(os.cpu_count()/torch.cuda.device_count()))
+print('Number of workers:', num_workers)
+
+print('Number of GPUs:', torch.cuda.device_count())
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 torch.manual_seed(0)
-
-class ImagesDS(D.Dataset):
-    def __init__(self, df, img_dir, mode='train', site=1, channels=[1,2,3,4,5,6]):
-        self.records = df.to_records(index=False)
-        self.channels = channels
-        self.site = site
-        self.mode = mode
-        self.img_dir = img_dir
-        self.len = df.shape[0]
-        
-    @staticmethod
-    def _load_img_as_tensor(file_name):
-        with Image.open(file_name) as img:
-            return T.ToTensor()(img)
-
-    def _get_img_path(self, index, channel):
-        experiment, well, plate = self.records[index].experiment, self.records[index].well, self.records[index].plate
-        return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{self.site}_w{channel}.png'])
-        
-    def __getitem__(self, index):
-        paths = [self._get_img_path(index, ch) for ch in self.channels]
-        img = torch.cat([self._load_img_as_tensor(img_path) for img_path in paths])
-        if self.mode == 'train':
-            return img, int(self.records[index].sirna)
-        else:
-            return img, self.records[index].id_code
-
-    def __len__(self):
-        return self.len
+if torch.cuda.is_available() and (gpu_id is None):
+    list_gpus = list(range(torch.cuda.device_count()))
+elif torch.cuda.is_available():
+    list_gpus = [gpu_id]
+else:
+    list_gpus = None
+print('List of gpus:', list_gpus)
+print()
 
 df = pd.read_csv(PATH_METADATA+'/train.csv')
 df_train, df_val = train_test_split(df, test_size = 0.1, random_state=42)
@@ -100,7 +90,7 @@ ds_val = ImagesDS(df_val, PATH_DATA, mode='train')
 ds_test = ImagesDS(df_test, PATH_DATA, mode='test')
 
 classes = 1108
-model = models.resnext50_32x4d(pretrained=True)
+model = models.resnet18(pretrained=pretrain)
 num_ftrs = model.fc.in_features
 model.fc = torch.nn.Linear(num_ftrs, classes)
 
@@ -111,9 +101,8 @@ with torch.no_grad():
     new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
 model.conv1 = new_conv
 
-model = torch.nn.DataParallel(model)
+model = torch.nn.DataParallel(model, device_ids=list_gpus)
 
-num_workers = os.cpu_count()
 loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)
 val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)
 tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers)
@@ -128,26 +117,26 @@ metrics = {
 
 trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
 
-@trainer.on(Events.EPOCH_STARTED)
-def turn_on_layers(engine):
-    epoch = engine.state.epoch
-    if epoch == 1:
-        temp = next(model.named_children())[1]
-        for name, child in temp.named_children():
-            if name == 'fc':
-                print(name + ' is unfrozen')
+if pretrain:
+    @trainer.on(Events.EPOCH_STARTED)
+    def turn_on_layers(engine):
+        epoch = engine.state.epoch
+        if epoch == 1:
+            temp = next(model.named_children())[1]
+            for name, child in temp.named_children():
+                if name == 'fc':
+                    print(name + ' is unfrozen')
+                    for param in child.parameters():
+                        param.requires_grad = True
+                else:
+                    for param in child.parameters():
+                        param.requires_grad = False
+
+        if epoch == 3:
+            print('Turn on all the layers')
+            for name, child in model.named_children():
                 for param in child.parameters():
                     param.requires_grad = True
-            else:
-                print(name + ' is frozen')
-                for param in child.parameters():
-                    param.requires_grad = False
-
-    if epoch == 3:
-        print('Turn on all the layers')
-        for name, child in model.named_children():
-            for param in child.parameters():
-                param.requires_grad = True
 
 pbar = ProgressBar(bar_format='')
 pbar.attach(trainer, output_transform=lambda x: {'loss': x})
@@ -166,22 +155,20 @@ def compute_and_display_val_metrics(engine):
         print(f'\nNew best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
         if not os.path.exists('models/'):
             os.makedirs('models/')
-        torch.save(model.state_dict(), 'models/best_model.pth')
+        torch.save(model.state_dict(), 'models/best_model_'+hour+'.pth')
 
     print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
           .format(engine.state.epoch, 
                       metrics['loss'], 
                       metrics['accuracy']))
 
-lr_scheduler = ExponentialLR(optimizer, gamma=0.95)
+if scheduler:
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def update_lr_scheduler(engine):
+        lr_scheduler.step()
 
-@trainer.on(Events.EPOCH_COMPLETED)
-def update_lr_scheduler(engine):
-    lr_scheduler.step()
-    lr = float(optimizer.param_groups[0]['lr'])
-    print('Learning rate: {}'.format(lr))
-
-tb_logger = TensorboardLogger('board/ResNet18')
+tb_logger = TensorboardLogger('board/' + hour)
 tb_logger.attach(trainer, log_handler=OutputHandler(tag='training', output_transform=lambda loss: {'loss': loss}), event_name=Events.ITERATION_COMPLETED)
 tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
 tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_name=Events.ITERATION_STARTED)
@@ -190,7 +177,7 @@ tb_logger.close()
 
 trainer.run(loader, max_epochs=NB_EPOCHS)
 
-model.load_state_dict(torch.load('models/best_model.pth'))
+model.load_state_dict(torch.load('models/best_model_'+hour+'.pth'))
 model.eval()
 with torch.no_grad():
     preds = np.empty(0)
@@ -202,4 +189,4 @@ with torch.no_grad():
 
 submission = pd.read_csv(PATH_METADATA + '/test.csv')
 submission['sirna'] = preds.astype(int)
-submission.to_csv('submission.csv', index=False, columns=['id_code','sirna'])
+submission.to_csv('submission_' + hour + '.csv', index=False, columns=['id_code','sirna'])
