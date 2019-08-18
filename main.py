@@ -30,11 +30,13 @@ hour = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
 parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
+parser.add_argument('--lr', default=0.001, type=float)
 parser.add_argument('--pretrain', default=False, action='store_true')
 parser.add_argument('--scheduler', default=False, action='store_true')
 
 args = parser.parse_args()
 debug = args.debug
+lr = args.lr
 pretrain = args.pretrain
 scheduler = args.scheduler
 
@@ -49,7 +51,6 @@ else:
     PATIENCE = 3
     BATCH_SIZE = 80
     
-LR = 0.001
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -96,7 +97,7 @@ val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_worke
 tloader = D.DataLoader(ds_test, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 metrics = {
     'loss': Loss(criterion),
