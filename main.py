@@ -24,25 +24,20 @@ from data_loader import ImagesDS
 
 # import warnings
 # warnings.filterwarnings('ignore')
+torch.manual_seed(0)
 
 hour = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
-parser = argparse.ArgumentParser(description="My parser")
+parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--pretrain', default=False, action='store_true')
 parser.add_argument('--scheduler', default=False, action='store_true')
-if torch.cuda.is_available():
-    parser.add_argument('--gpu_id', type=int, choices=range(0, torch.cuda.device_count()))
 
 args = parser.parse_args()
 debug = args.debug
 pretrain = args.pretrain
 scheduler = args.scheduler
-if torch.cuda.is_available():
-    gpu_id = args.gpu_id
-else:
-    gpu_id = None
-    
+
 if debug:
     PATH_DATA = 'data/samples'
     NB_EPOCHS = 5
@@ -57,26 +52,19 @@ else:
 LR = 0.001
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
-if torch.cuda.is_available() and (gpu_id is None):
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+if device == 'cpu':
+    num_workers = os.cpu_count()
+else:
+    num_workers = 4*torch.cuda.device_count()
+
+if torch.cuda.is_available():
     BATCH_SIZE = BATCH_SIZE * torch.cuda.device_count()
 
-if gpu_id is None:
-    num_workers = int(0.75*os.cpu_count())
-elif torch.cuda.is_available():
-    num_workers = int(0.75*(os.cpu_count()/torch.cuda.device_count()))
-print('Number of workers:', num_workers)
+print('Number of workers used:', num_workers, '/', os.cpu_count())
+print('Number of GPUs used:', torch.cuda.device_count())
 
-print('Number of GPUs:', torch.cuda.device_count())
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-torch.manual_seed(0)
-if torch.cuda.is_available() and (gpu_id is None):
-    list_gpus = list(range(torch.cuda.device_count()))
-elif torch.cuda.is_available():
-    list_gpus = [gpu_id]
-else:
-    list_gpus = None
-print('List of gpus:', list_gpus)
-print()
 
 df = pd.read_csv(PATH_METADATA+'/train.csv')
 df_train, df_val = train_test_split(df, test_size = 0.1, random_state=42)
@@ -101,7 +89,7 @@ with torch.no_grad():
     new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
 model.conv1 = new_conv
 
-model = torch.nn.DataParallel(model, device_ids=list_gpus)
+model = torch.nn.DataParallel(model)
 
 loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)
 val_loader = D.DataLoader(ds_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)

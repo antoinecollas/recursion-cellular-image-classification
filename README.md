@@ -3,3 +3,6 @@ https://www.kaggle.com/c/recursion-cellular-image-classification/
 
 # Data
 https://console.cloud.google.com/storage/browser/rxrx1-dataset
+
+# Instructions
+By default, main.py uses all gpus available.

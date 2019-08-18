@@ -6,5 +6,13 @@
 
 # install env
 source config_gcp.sh
-gcloud compute ssh $INSTANCE_NAME --command "source /opt/anaconda3/etc/profile.d/conda.sh && conda activate recursion-cellular-image-classification && screen -d -m python main.py"
 gcloud compute ssh $INSTANCE_NAME --command "source /opt/anaconda3/etc/profile.d/conda.sh && conda activate recursion-cellular-image-classification && screen -d -m python -m tensorboard.main --logdir=board/"
+# gcloud compute ssh $INSTANCE_NAME --command "source /opt/anaconda3/etc/profile.d/conda.sh && conda activate recursion-cellular-image-classification && screen -d -m python main.py"
+
+# CUDA_VISIBLE_DEVICES=1,2 python main.py
+
+# Examples of 4 experiences (1 per GPU):
+# CUDA_VISIBLE_DEVICES=0 screen -d -m python main.py
+# CUDA_VISIBLE_DEVICES=1 screen -d -m python main.py --pretrain
+# CUDA_VISIBLE_DEVICES=2 screen -d -m python main.py --scheduler
+# CUDA_VISIBLE_DEVICES=3 screen -d -m python main.py --pretrain --scheduler
