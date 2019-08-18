@@ -73,9 +73,9 @@ print('Size training dataset: {}'.format(len(df_train)))
 print('Size validation dataset: {}'.format(len(df_val)))
 print('Size test dataset: {}\n'.format(len(df_test)))
 
-ds = ImagesDS(df_train, PATH_DATA, mode='train')
-ds_val = ImagesDS(df_val, PATH_DATA, mode='train')
-ds_test = ImagesDS(df_test, PATH_DATA, mode='test')
+ds = ImagesDS(df=df_train, img_dir=PATH_DATA, site='random', mode='train') # we use both sites for training !
+ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, site=1, mode='train') # we only use first site to do the prediction !
+ds_test = ImagesDS(df=df_test, img_dir=PATH_DATA, site=1, mode='test') # we only use first site to do the prediction !
 
 classes = 1108
 model = models.resnet18(pretrained=pretrain)
