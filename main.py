@@ -47,8 +47,8 @@ if debug:
     BATCH_SIZE = 1
 else:
     PATH_DATA = 'data'
-    NB_EPOCHS = 100
-    PATIENCE = 3
+    NB_EPOCHS = 1000
+    PATIENCE = 20
     BATCH_SIZE = 80
     
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
