@@ -5,13 +5,9 @@ from torchvision import transforms as T
 from random import choice
 
 class ImagesDS(D.Dataset):
-    def __init__(self, df, img_dir, mode='train', site=1, channels=[1,2,3,4,5,6]):
+    def __init__(self, df, img_dir, mode='train', channels=[1,2,3,4,5,6]):
         self.records = df.to_records(index=False)
         self.channels = channels
-        if type(site) == int:
-            self.site = lambda : site
-        elif site == 'random':
-            self.site = lambda : choice([1,2])
         self.mode = mode
         self.img_dir = img_dir
         self.len = df.shape[0]
@@ -21,14 +17,17 @@ class ImagesDS(D.Dataset):
         with Image.open(file_name) as img:
             return T.ToTensor()(img)
 
-    def _get_img_path(self, index, channel):
+    def _get_img_path(self, index, channel, site):
         experiment, well, plate = self.records[index].experiment, self.records[index].well, self.records[index].plate
-        site = self.site()
         return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.png'])
         
     def __getitem__(self, index):
-        paths = [self._get_img_path(index, ch) for ch in self.channels]
-        img = torch.cat([self._load_img_as_tensor(img_path) for img_path in paths])
+        paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
+        paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
+        img_site_1 = torch.cat([self._load_img_as_tensor(img_path) for img_path in paths_site_1])
+        img_site_2 = torch.cat([self._load_img_as_tensor(img_path) for img_path in paths_site_2])
+        img = torch.stack([img_site_1, img_site_2])
+
         if self.mode == 'train':
             return img, int(self.records[index].sirna)
         else:

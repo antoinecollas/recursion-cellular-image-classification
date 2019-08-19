@@ -21,9 +21,8 @@ from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, Output
 from sklearn.model_selection import train_test_split
 
 from data_loader import ImagesDS
+from two_sites_nn import TwoSitesNN
 
-# import warnings
-# warnings.filterwarnings('ignore')
 torch.manual_seed(0)
 
 hour = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
@@ -44,12 +43,12 @@ if debug:
     PATH_DATA = 'data/samples'
     NB_EPOCHS = 5
     PATIENCE = 1000
-    BATCH_SIZE = 1
+    BATCH_SIZE = 3
 else:
     PATH_DATA = 'data'
     NB_EPOCHS = 1000
     PATIENCE = 20
-    BATCH_SIZE = 80
+    BATCH_SIZE = 40
     
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
@@ -74,22 +73,12 @@ print('Size training dataset: {}'.format(len(df_train)))
 print('Size validation dataset: {}'.format(len(df_val)))
 print('Size test dataset: {}\n'.format(len(df_test)))
 
-ds = ImagesDS(df=df_train, img_dir=PATH_DATA, site='random', mode='train') # we use both sites for training !
-ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, site=1, mode='train') # we only use first site to do the prediction !
-ds_test = ImagesDS(df=df_test, img_dir=PATH_DATA, site=1, mode='test') # we only use first site to do the prediction !
+ds = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train')
+ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train')
+ds_test = ImagesDS(df=df_test, img_dir=PATH_DATA, mode='test')
 
-classes = 1108
-model = models.resnet18(pretrained=pretrain)
-num_ftrs = model.fc.in_features
-model.fc = torch.nn.Linear(num_ftrs, classes)
-
-# let's make our model work with 6 channels
-trained_kernel = model.conv1.weight
-new_conv = nn.Conv2d(6, 64, kernel_size=7, stride=2, padding=3, bias=False)
-with torch.no_grad():
-    new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
-model.conv1 = new_conv
-
+nb_classes = 1108
+model = TwoSitesNN(pretrained=pretrain, nb_classes=nb_classes)
 model = torch.nn.DataParallel(model)
 
 loader = D.DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers)
@@ -113,7 +102,7 @@ if pretrain:
         if epoch == 1:
             temp = next(model.named_children())[1]
             for name, child in temp.named_children():
-                if name == 'fc':
+                if name == 'classifier':
                     print(name + ' is unfrozen')
                     for param in child.parameters():
                         param.requires_grad = True
