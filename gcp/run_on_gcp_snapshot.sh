@@ -11,8 +11,13 @@ gcloud compute ssh $INSTANCE_NAME --command "source /opt/anaconda3/etc/profile.d
 
 # CUDA_VISIBLE_DEVICES=1,2 python main.py
 
-# Examples of 4 experiences (1 per GPU):
+# Examples of 4 experiments (1 per GPU):
 # CUDA_VISIBLE_DEVICES=0 screen -d -m python main.py
 # CUDA_VISIBLE_DEVICES=1 screen -d -m python main.py --pretrain
 # CUDA_VISIBLE_DEVICES=2 screen -d -m python main.py --scheduler
 # CUDA_VISIBLE_DEVICES=3 screen -d -m python main.py --pretrain --scheduler
+
+# CUDA_VISIBLE_DEVICES=0 screen -d -m python main.py --pretrain --scheduler --lr 0.1
+# CUDA_VISIBLE_DEVICES=1 screen -d -m python main.py --pretrain --scheduler --lr 0.01
+# CUDA_VISIBLE_DEVICES=2 screen -d -m python main.py --pretrain --scheduler --lr 0.001
+# CUDA_VISIBLE_DEVICES=3 screen -d -m python main.py --pretrain --scheduler --lr 0.0001
