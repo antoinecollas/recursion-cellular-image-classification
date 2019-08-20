@@ -1,12 +1,14 @@
-import torch
+from random import choice
+from copy import deepcopy
 from PIL import Image
+
+import torch
 import torch.utils.data as D
 from torchvision import transforms as T
-from random import choice
 
 class ImagesDS(D.Dataset):
     def __init__(self, df, img_dir, mode='train', channels=[1,2,3,4,5,6]):
-        self.records = df.to_records(index=False)
+        self.records = deepcopy(df).to_records(index=False)
         self.channels = channels
         self.mode = mode
         self.img_dir = img_dir

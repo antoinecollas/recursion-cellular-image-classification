@@ -11,19 +11,13 @@ from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
 
-def train(experiment_id, ds_train, ds_val, model, bs, lr, scheduler, num_workers, device, debug):
-    if debug:
-        NB_EPOCHS = 5
-        PATIENCE = 1000
-    else:
-        NB_EPOCHS = 1000
-        PATIENCE = 20
+def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, device, debug):
 
-    train_loader = D.DataLoader(ds_train, batch_size=bs, shuffle=True, num_workers=num_workers)
-    val_loader = D.DataLoader(ds_val, batch_size=bs, shuffle=True, num_workers=num_workers)
+    train_loader = D.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, num_workers=num_workers)
+    val_loader = D.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, num_workers=num_workers)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
 
     metrics = {
         'loss': Loss(criterion),
@@ -32,7 +26,7 @@ def train(experiment_id, ds_train, ds_val, model, bs, lr, scheduler, num_workers
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
 
-    if model.module.pretrained:
+    if hyperparams['pretrained']:
         @trainer.on(Events.EPOCH_STARTED)
         def turn_on_layers(engine):
             epoch = engine.state.epoch
@@ -57,7 +51,7 @@ def train(experiment_id, ds_train, ds_val, model, bs, lr, scheduler, num_workers
     pbar.attach(trainer, output_transform=lambda x: {'loss': x})
 
     val_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
-    handler = EarlyStopping(patience=PATIENCE, score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
+    handler = EarlyStopping(patience=hyperparams['patience'], score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
     val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
     @trainer.on(Events.EPOCH_COMPLETED)
@@ -67,7 +61,7 @@ def train(experiment_id, ds_train, ds_val, model, bs, lr, scheduler, num_workers
         
         if (epoch == 1) or (metrics['accuracy'] > engine.state.best_acc):
             engine.state.best_acc = metrics['accuracy']
-            print(f'\nNew best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
+            print(f'New best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
             if not os.path.exists('models/'):
                 os.makedirs('models/')
             torch.save(model.state_dict(), 'models/best_model_'+experiment_id+'.pth')
@@ -77,7 +71,7 @@ def train(experiment_id, ds_train, ds_val, model, bs, lr, scheduler, num_workers
                         metrics['loss'], 
                         metrics['accuracy']))
 
-    if scheduler:
+    if hyperparams['scheduler']:
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
         @trainer.on(Events.EPOCH_COMPLETED)
         def update_lr_scheduler(engine):
@@ -90,4 +84,4 @@ def train(experiment_id, ds_train, ds_val, model, bs, lr, scheduler, num_workers
     tb_logger.attach(trainer, log_handler=GradsHistHandler(model), event_name=Events.EPOCH_COMPLETED)
     tb_logger.close()
 
-    trainer.run(train_loader, max_epochs=NB_EPOCHS)
+    trainer.run(train_loader, max_epochs=hyperparams['nb_epochs'])
