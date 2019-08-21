@@ -57,7 +57,7 @@ else:
     num_workers = 4*torch.cuda.device_count()
 
 if torch.cuda.is_available():
-    BATCH_SIZE = BATCH_SIZE*torch.cuda.device_count()
+    HYPERPARAMS['bs'] = HYPERPARAMS['bs']*torch.cuda.device_count()
 
 print('Number of workers used:', num_workers, '/', os.cpu_count())
 print('Number of GPUs used:', torch.cuda.device_count())
