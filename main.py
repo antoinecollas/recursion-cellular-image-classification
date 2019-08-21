@@ -44,7 +44,7 @@ if debug:
     PATH_DATA = 'data/samples'
     HYPERPARAMS['nb_epochs'] = 1
     HYPERPARAMS['patience'] = 100
-    HYPERPARAMS['bs'] = 3
+    HYPERPARAMS['bs'] = 1
 else:
     PATH_DATA = 'data'
     HYPERPARAMS['nb_epochs'] = 200
@@ -71,7 +71,7 @@ def get_celltype(experiment):
 
 nb_classes = 1108
 model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes)
-model = torch.nn.DataParallel(model)
+model = torch.nn.DataParallel(model).to(device)
 
 if training:
     print('########## TRAINING ##########')
@@ -120,7 +120,7 @@ for i, celltype in enumerate(df_test['celltype'].unique()):
         df_test_experiment = df_test_cell[df_test_cell['experiment']==experiment]
         ds_test_experiment = ImagesDS(df=df_test_experiment, img_dir=PATH_DATA, mode='test')
 
-        temp = test(experiment_id, ds_test_experiment, model, HYPERPARAMS['bs'], num_workers, device, debug)
+        temp = test(experiment_id_cell, ds_test_experiment, model, HYPERPARAMS['bs'], num_workers, device, debug)
         if i==0 and j==0:
             preds = temp
         else:
