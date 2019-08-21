@@ -89,6 +89,8 @@ model = torch.nn.DataParallel(model)
 
 train(experiment_id, ds_train, ds_val, model, HYPERPARAMS, num_workers, device, debug)
 
+model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
+
 print('\n\n########## TRAINING STEP 2 ##########')
 
 for celltype in df_train['celltype'].unique():
