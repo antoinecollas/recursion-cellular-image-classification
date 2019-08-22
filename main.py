@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 import torch
 
 from data_loader import ImagesDS
-from two_sites_nn import TwoSitesNN
+from models import TwoSitesNN, DummyClassifier
 
 from train import train
 from test import test
@@ -44,11 +44,11 @@ if debug:
     PATH_DATA = 'data/samples'
     HYPERPARAMS['nb_epochs'] = 1
     HYPERPARAMS['patience'] = 100
-    HYPERPARAMS['bs'] = 1
+    HYPERPARAMS['bs'] = 2
 else:
     PATH_DATA = 'data'
-    HYPERPARAMS['nb_epochs'] = 200
-    HYPERPARAMS['patience'] = 10
+    HYPERPARAMS['nb_epochs'] = 1
+    HYPERPARAMS['patience'] = 5
     HYPERPARAMS['bs'] = 40
 
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
@@ -104,13 +104,31 @@ if training:
         model_cell = deepcopy(model)
         model.module.pretrained = False
         experiment_id_cell = experiment_id + '_' + celltype
-        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, HYPERPARAMS, num_workers, device, debug)
+        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, HYPERPARAMS, num_workers, \
+            device, debug)
 
 print('\n\n########## TEST ##########')
 
 df_test = pd.read_csv(PATH_METADATA+'/test.csv')
 df_test['celltype'] = df_test['experiment'].apply(get_celltype)
 print('Size test dataset: {}'.format(len(df_test)))
+
+if debug:
+    model = DummyClassifier(nb_classes=nb_classes)
+
+# We use the fact that two siRNA are always present on the plates.
+plate_groups = np.zeros((1108,4), int)
+df = pd.read_csv('data/metadata/train.csv')
+for sirna in range(nb_classes):
+    grp = df.loc[df.sirna==sirna,:].plate.value_counts().index.values
+    assert len(grp) == 3
+    plate_groups[sirna,0:3] = grp
+    plate_groups[sirna,3] = 10 - grp.sum()
+del df
+experiment_types = [3, 1, 0, 0, 0, 0, 2, 2, 3, 0, 0, 3, 1, 0, 0, 0, 2, 3]
+# [3 1 0 0 0 0 2 2 3 0 0 3 1 0 0 0 3 3]
+# [3 1 0 0 0 0 2 2 3 0 0 3 1 0 0 0 0 3]
+idx_experiment = 0
 
 for i, celltype in enumerate(df_test['celltype'].unique()):
     df_test_cell = df_test[df_test['celltype']==celltype]
@@ -120,11 +138,18 @@ for i, celltype in enumerate(df_test['celltype'].unique()):
         df_test_experiment = df_test_cell[df_test_cell['experiment']==experiment]
         ds_test_experiment = ImagesDS(df=df_test_experiment, img_dir=PATH_DATA, mode='test')
 
-        temp = test(experiment_id_cell, ds_test_experiment, model, HYPERPARAMS['bs'], num_workers, device, debug)
+        if not debug:
+            model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
+            model.eval()
+
+        temp = test(experiment_id_cell, df_test_experiment, ds_test_experiment, plate_groups, \
+            experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)
         if i==0 and j==0:
             preds = temp
         else:
             preds = np.concatenate([preds, temp], axis=0)
+        
+        idx_experiment += 1
 
 df_test['sirna'] = preds.astype(int)
 df_test.to_csv('submission_' + experiment_id + '.csv', index=False, columns=['id_code','sirna'])

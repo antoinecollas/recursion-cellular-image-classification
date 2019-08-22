@@ -34,3 +34,14 @@ class TwoSitesNN(nn.Module):
         output = self.classifier(features) 
 
         return output
+
+class DummyClassifier():
+    def __init__(self, nb_classes):
+        self.nb_classes = nb_classes
+    
+    def __call__(self, x):
+        bs = x.shape[0]
+        output = torch.zeros((bs, self.nb_classes)).random_(0, 100)
+        sum_row = torch.sum(output, axis=1).unsqueeze(1).repeat(1, output.shape[1])
+        output = output / sum_row
+        return output

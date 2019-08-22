@@ -6,18 +6,24 @@ import numpy as np
 import torch
 import torch.utils.data as D
 
-def test(experiment_id, ds_test, model, bs, num_workers, device, debug):
+def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers, device):
     test_loader = D.DataLoader(ds_test, batch_size=bs, shuffle=False, num_workers=num_workers)
 
-    model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
-    model.eval()
-
     with torch.no_grad():
-        preds = np.empty(0)
-        for x, _ in tqdm(test_loader):
+        for i, (x, _) in enumerate(tqdm(test_loader)):
             x = x.to(device)
-            output = model(x)
-            idx = output.max(dim=-1)[1].cpu().numpy()
-            preds = np.append(preds, idx, axis=0)
+            output = model(x).cpu().numpy()
+            if i==0:
+                preds = output
+            else:
+                preds = np.concatenate([preds, output], axis=0)
+        print(preds.shape)
+
+    assert len(preds) == len(df_test)
+    mask = np.repeat(plate_groups[np.newaxis, :, experiment_type], len(preds), axis=0) != \
+           np.repeat(df_test.plate.values[:, np.newaxis], 1108, axis=1)
+    preds[mask] = 0
+
+    preds = preds.argmax(1)
 
     return preds
