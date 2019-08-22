@@ -31,7 +31,7 @@ class TwoSitesNN(nn.Module):
         features_site_1 = features[:size_site_1]
         features_site_2 = features[size_site_1:]
         features = (features_site_1+features_site_2)/2
-        output = self.classifier(features) 
+        output = self.classifier(features)
 
         return output
 
@@ -41,7 +41,5 @@ class DummyClassifier():
     
     def __call__(self, x):
         bs = x.shape[0]
-        output = torch.zeros((bs, self.nb_classes)).random_(0, 100)
-        sum_row = torch.sum(output, axis=1).unsqueeze(1).repeat(1, output.shape[1])
-        output = output / sum_row
+        output = torch.zeros((bs, self.nb_classes)).random_(-10000, 10000)/1000
         return output

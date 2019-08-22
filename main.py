@@ -116,7 +116,7 @@ print('Size test dataset: {}'.format(len(df_test)))
 if debug:
     model = DummyClassifier(nb_classes=nb_classes)
 
-# We use the fact that two siRNA are always present on the plates.
+# We use the fact that some siRNA are always present on the plates.
 plate_groups = np.zeros((1108,4), int)
 df = pd.read_csv('data/metadata/train.csv')
 for sirna in range(nb_classes):
