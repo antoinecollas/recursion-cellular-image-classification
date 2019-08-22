@@ -47,7 +47,7 @@ if debug:
     HYPERPARAMS['bs'] = 2
 else:
     PATH_DATA = 'data'
-    HYPERPARAMS['nb_epochs'] = 1
+    HYPERPARAMS['nb_epochs'] = 100
     HYPERPARAMS['patience'] = 5
     HYPERPARAMS['bs'] = 40
 
