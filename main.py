@@ -15,7 +15,10 @@ from models import TwoSitesNN, DummyClassifier
 from train import train
 from test import test
 
-torch.manual_seed(0)
+import warnings
+warnings.filterwarnings('ignore')
+
+# torch.manual_seed(0)
 
 parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
@@ -55,7 +58,7 @@ PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 if device == 'cpu':
-    num_workers = os.cpu_count()
+    num_workers = 0
 else:
     num_workers = 4*torch.cuda.device_count()
 
@@ -70,6 +73,8 @@ else:
 HYPERPARAMS['momentum'] = 0.9
 HYPERPARAMS['nesterov'] = True
 HYPERPARAMS['weight_decay'] = 3e-5
+
+HYPERPARAMS['early_stopping'] = False
 
 print('Number of workers used:', num_workers, '/', os.cpu_count())
 print('Number of GPUs used:', torch.cuda.device_count())
@@ -102,6 +107,10 @@ if training:
     model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
 
     print('\n\n########## TRAINING STEP 2 ##########')
+
+    if not debug:
+        HYPERPARAMS['nb_epochs'] = 20
+    HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
 
     for celltype in df_train['celltype'].unique():
         print('\nTraining:', celltype)

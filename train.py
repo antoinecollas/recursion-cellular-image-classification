@@ -55,9 +55,11 @@ def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, devi
     pbar.attach(trainer, output_transform=lambda x: {'loss': x})
 
     val_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
-    handler = EarlyStopping(patience=hyperparams['patience'], score_function=lambda engine: \
-        engine.state.metrics['accuracy'], trainer=trainer)
-    val_evaluator.add_event_handler(Events.COMPLETED, handler)
+    
+    if hyperparams['early_stopping']:
+        handler = EarlyStopping(patience=hyperparams['patience'], score_function=lambda engine: \
+            engine.state.metrics['accuracy'], trainer=trainer)
+        val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def compute_and_display_val_metrics(engine):
