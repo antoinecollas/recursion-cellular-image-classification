@@ -8,7 +8,7 @@ class TwoSitesNN(nn.Module):
     def __init__(self, pretrained, nb_classes):
         super(TwoSitesNN, self).__init__()
 
-        self.base_nn = models.resnet18(pretrained=pretrained)
+        self.base_nn = models.resnet50(pretrained=pretrained)
         trained_kernel = self.base_nn.conv1.weight
         new_conv = nn.Conv2d(6, 64, kernel_size=7, stride=2, padding=3, bias=False)
         with torch.no_grad():

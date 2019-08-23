@@ -20,7 +20,7 @@ torch.manual_seed(0)
 parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
-parser.add_argument('--lr', default=0.001, type=float)
+parser.add_argument('--lr', type=float)
 parser.add_argument('--train', default=False, action='store_true')
 
 args = parser.parse_args()
@@ -35,20 +35,19 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
     sys.exit(1)
 
 HYPERPARAMS = {
-    'lr' : args.lr,
     'pretrained': True,
     'scheduler': True
 }
 
 if debug:
     PATH_DATA = 'data/samples'
-    HYPERPARAMS['nb_epochs'] = 1
+    HYPERPARAMS['nb_epochs'] = 2
     HYPERPARAMS['patience'] = 100
     HYPERPARAMS['bs'] = 2
 else:
     PATH_DATA = 'data'
     HYPERPARAMS['nb_epochs'] = 100
-    HYPERPARAMS['patience'] = 5
+    HYPERPARAMS['patience'] = 10
     HYPERPARAMS['bs'] = 40
 
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
@@ -62,6 +61,15 @@ else:
 
 if torch.cuda.is_available():
     HYPERPARAMS['bs'] = HYPERPARAMS['bs']*torch.cuda.device_count()
+
+if lr is None:
+    HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
+else:
+    HYPERPARAMS['lr'] = lr
+
+HYPERPARAMS['momentum'] = 0.9
+HYPERPARAMS['nesterov'] = True
+HYPERPARAMS['weight_decay'] = 3e-5
 
 print('Number of workers used:', num_workers, '/', os.cpu_count())
 print('Number of GPUs used:', torch.cuda.device_count())

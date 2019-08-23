@@ -13,11 +13,15 @@ from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, Output
 
 def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, device, debug):
 
-    train_loader = D.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, num_workers=num_workers)
-    val_loader = D.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, num_workers=num_workers)
+    train_loader = D.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
+        num_workers=num_workers)
+    val_loader = D.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
+        num_workers=num_workers)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
+    optimizer = torch.optim.SGD(model.parameters(), lr=hyperparams['lr'], \
+        momentum=hyperparams['momentum'], nesterov=hyperparams['nesterov'], \
+        weight_decay=hyperparams['weight_decay'])
 
     metrics = {
         'loss': Loss(criterion),
@@ -51,7 +55,8 @@ def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, devi
     pbar.attach(trainer, output_transform=lambda x: {'loss': x})
 
     val_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
-    handler = EarlyStopping(patience=hyperparams['patience'], score_function=lambda engine: engine.state.metrics['accuracy'], trainer=trainer)
+    handler = EarlyStopping(patience=hyperparams['patience'], score_function=lambda engine: \
+        engine.state.metrics['accuracy'], trainer=trainer)
     val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
     @trainer.on(Events.EPOCH_COMPLETED)
@@ -72,15 +77,19 @@ def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, devi
                         metrics['accuracy']))
 
     if hyperparams['scheduler']:
-        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, hyperparams['nb_epochs'], \
+            eta_min=hyperparams['lr']/100, last_epoch=-1)
         @trainer.on(Events.EPOCH_COMPLETED)
         def update_lr_scheduler(engine):
             lr_scheduler.step()
 
     tb_logger = TensorboardLogger('board/'+experiment_id)
-    tb_logger.attach(trainer, log_handler=OutputHandler(tag='training', output_transform=lambda loss: {'loss': loss}), event_name=Events.ITERATION_COMPLETED)
-    tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
-    tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_name=Events.ITERATION_STARTED)
+    tb_logger.attach(trainer, log_handler=OutputHandler(tag='training', \
+        output_transform=lambda loss: {'loss': loss}), event_name=Events.ITERATION_COMPLETED)
+    tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
+        metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
+    tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), \
+        event_name=Events.ITERATION_STARTED)
     tb_logger.attach(trainer, log_handler=GradsHistHandler(model), event_name=Events.EPOCH_COMPLETED)
     tb_logger.close()
 
