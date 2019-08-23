@@ -3,6 +3,7 @@ data/
 board/
 models/
 submission*.csv
+.DS_STORE
 
 #### Default gitignore from github:
 
