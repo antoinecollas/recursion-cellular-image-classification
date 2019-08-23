@@ -48,7 +48,7 @@ else:
     PATH_DATA = 'data'
     HYPERPARAMS['nb_epochs'] = 100
     HYPERPARAMS['patience'] = 10
-    HYPERPARAMS['bs'] = 40
+    HYPERPARAMS['bs'] = 12
 
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
