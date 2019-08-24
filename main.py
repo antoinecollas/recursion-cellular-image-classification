@@ -9,6 +9,12 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 
+if torch.cuda.is_available():
+    try:
+        from apex import amp
+    except ImportError:
+        raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run this example.")
+
 from data_loader import ImagesDS
 from models import TwoSitesNN, DummyClassifier
 
@@ -51,7 +57,7 @@ else:
     PATH_DATA = 'data'
     HYPERPARAMS['nb_epochs'] = 100
     HYPERPARAMS['patience'] = 10
-    HYPERPARAMS['bs'] = 12
+    HYPERPARAMS['bs'] = 24
 
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
@@ -85,6 +91,8 @@ def get_celltype(experiment):
 nb_classes = 1108
 model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes)
 model = torch.nn.DataParallel(model).to(device)
+if torch.cuda.is_available():
+    model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
 
 if training:
     print('########## TRAINING ##########')
@@ -130,6 +138,9 @@ df_test = pd.read_csv(PATH_METADATA+'/test.csv')
 df_test['celltype'] = df_test['experiment'].apply(get_celltype)
 print('Size test dataset: {}'.format(len(df_test)))
 
+nb_classes = 1108
+model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes)
+model = torch.nn.DataParallel(model).to(device)
 if debug:
     model = DummyClassifier(nb_classes=nb_classes)
 
