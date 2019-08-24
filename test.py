@@ -4,11 +4,10 @@ import pandas as pd
 import numpy as np
 
 import torch
-import torch.utils.data as D
 import torch.nn.functional as F
 
 def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers, device):
-    test_loader = D.DataLoader(ds_test, batch_size=bs, shuffle=False, num_workers=num_workers)
+    test_loader = torch.utils.data.DataLoader(ds_test, batch_size=bs, shuffle=False, num_workers=num_workers)
 
     with torch.no_grad():
         for i, (x, _) in enumerate(tqdm(test_loader)):

@@ -4,12 +4,11 @@ from PIL import Image
 
 import numpy as np
 import torch
-import torch.utils.data as D
 
 from albumentations.core.composition import Compose
 from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate
 
-class ImagesDS(D.Dataset):
+class ImagesDS(torch.utils.data.Dataset):
     def __init__(self, df, img_dir, mode='train', channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
         self.channels = channels

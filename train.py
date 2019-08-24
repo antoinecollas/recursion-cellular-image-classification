@@ -3,8 +3,6 @@ import os
 import torch
 import torch.nn as nn
 
-import torch.utils.data as D
-
 from ignite.engine.engine import Engine
 from ignite.engine import Events, create_supervised_evaluator, create_supervised_trainer, _prepare_batch
 from ignite.metrics import Loss, Accuracy
@@ -39,9 +37,9 @@ def create_supervised_trainer_fp16(model, optimizer, loss_fn, device=None, non_b
             
 def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_workers, device, debug):
 
-    train_loader = D.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
+    train_loader = torch.utils.data.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
-    val_loader = D.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
+    val_loader = torch.utils.data.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
 
     criterion = nn.CrossEntropyLoss()
@@ -71,7 +69,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                         for param in child.parameters():
                             param.requires_grad = False
 
-            if epoch == 3:
+            if epoch == 1:
                 print('Turn on all the layers')
                 for name, child in model.named_children():
                     for param in child.parameters():
