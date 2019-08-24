@@ -17,8 +17,7 @@ class ImagesDS(D.Dataset):
         self.img_dir = img_dir
         self.len = df.shape[0]
         self.transform = Compose([
-            ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, interpolation=1, \
-                border_mode=4, value=None, mask_value=None, always_apply=False, p=1),
+            ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1),
             RandomCrop(height=364, width=364, p=1)
             ])
         

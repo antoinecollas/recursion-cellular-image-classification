@@ -57,7 +57,7 @@ else:
     PATH_DATA = 'data'
     HYPERPARAMS['nb_epochs'] = 100
     HYPERPARAMS['patience'] = 10
-    HYPERPARAMS['bs'] = 24
+    HYPERPARAMS['bs'] = 48
 
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
@@ -89,10 +89,13 @@ def get_celltype(experiment):
     return experiment.split('-')[0]
 
 nb_classes = 1108
-model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes)
-model = torch.nn.DataParallel(model).to(device)
+model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes).to(device)
+optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
+    momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
+    weight_decay=HYPERPARAMS['weight_decay'])
 if torch.cuda.is_available():
     model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
+model = torch.nn.DataParallel(model)
 
 if training:
     print('########## TRAINING ##########')
@@ -110,7 +113,7 @@ if training:
     ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train')
     ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train')
 
-    train(experiment_id, ds_train, ds_val, model, HYPERPARAMS, num_workers, device, debug)
+    train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
     model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
 
@@ -129,7 +132,7 @@ if training:
         model_cell = deepcopy(model)
         model.module.pretrained = False
         experiment_id_cell = experiment_id + '_' + celltype
-        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, HYPERPARAMS, num_workers, \
+        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, optimizer, HYPERPARAMS, num_workers, \
             device, debug)
 
 print('\n\n########## TEST ##########')

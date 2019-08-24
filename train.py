@@ -37,7 +37,7 @@ def create_supervised_trainer_fp16(model, optimizer, loss_fn, device=None, non_b
 
     return Engine(_update)
             
-def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, device, debug):
+def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_workers, device, debug):
 
     train_loader = D.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
@@ -45,9 +45,6 @@ def train(experiment_id, ds_train, ds_val, model, hyperparams, num_workers, devi
         num_workers=num_workers)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=hyperparams['lr'], \
-        momentum=hyperparams['momentum'], nesterov=hyperparams['nesterov'], \
-        weight_decay=hyperparams['weight_decay'])
 
     metrics = {
         'loss': Loss(criterion),
