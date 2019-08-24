@@ -4,7 +4,7 @@ gcloud compute disks create $INSTANCE_NAME \
     --project=$PROJECT \
     --size=200GB \
     --zone $ZONE \
-    --source-snapshot="recursion-cellular-image-classification" \
+    --source-snapshot="recursion-cellular-image-classification-v2" \
     --type=pd-ssd
 
 gcloud beta compute instances create $INSTANCE_NAME \
