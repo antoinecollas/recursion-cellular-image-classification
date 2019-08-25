@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--lr', type=float)
+parser.add_argument('--epoch', default=100, type=int)
 parser.add_argument('--train', default=False, action='store_true')
 parser.add_argument('--no_pretrain', default=False, action='store_true')
 
@@ -57,7 +58,7 @@ if debug:
     HYPERPARAMS['bs'] = 2
 else:
     PATH_DATA = 'data'
-    HYPERPARAMS['nb_epochs'] = 100
+    HYPERPARAMS['nb_epochs'] = args.epoch
     HYPERPARAMS['patience'] = 10
     HYPERPARAMS['bs'] = 48
 
@@ -123,7 +124,7 @@ if training:
     print('\n\n########## TRAINING STEP 2 ##########')
 
     if not debug:
-        HYPERPARAMS['nb_epochs'] = 20
+        HYPERPARAMS['nb_epochs'] = HYPERPARAMS['nb_epochs']//5
     HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
 
     for celltype in df_train['celltype'].unique():
