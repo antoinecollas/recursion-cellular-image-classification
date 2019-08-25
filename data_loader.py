@@ -12,7 +12,7 @@ from albumentations.core.composition import Compose
 from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate
 
 class ImagesDS(torch.utils.data.Dataset):
-    def __init__(self, df, img_dir, mode='train', channels=[1,2,3,4,5,6]):
+    def __init__(self, df, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
         self.channels = channels
         self.mode = mode
@@ -25,7 +25,7 @@ class ImagesDS(torch.utils.data.Dataset):
 
         print('Loading images...')
         imgs = list()
-        pool = multiprocessing.Pool(os.cpu_count())
+        pool = multiprocessing.Pool(num_workers)
         pbar = tqdm(total=len(self.records))
         def update(*a):
             pbar.update()

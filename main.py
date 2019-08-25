@@ -114,8 +114,8 @@ if training:
 
     print('########## TRAINING STEP 1 ##########')
 
-    ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train')
-    ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train')
+    ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+    ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
 
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
@@ -131,8 +131,8 @@ if training:
         print('\nTraining:', celltype)
         df_train_cell = df_train[df_train['celltype']==celltype]
         df_val_cell = df_val[df_val['celltype']==celltype]
-        ds_train_cell = ImagesDS(df=df_train_cell, img_dir=PATH_DATA, mode='train')
-        ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='train')
+        ds_train_cell = ImagesDS(df=df_train_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+        ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
         model_cell = deepcopy(model)
         model.module.pretrained = False
         experiment_id_cell = experiment_id + '_' + celltype
@@ -171,7 +171,7 @@ for i, celltype in enumerate(df_test['celltype'].unique()):
 
     for j, experiment in enumerate(df_test_cell['experiment'].unique()):
         df_test_experiment = df_test_cell[df_test_cell['experiment']==experiment]
-        ds_test_experiment = ImagesDS(df=df_test_experiment, img_dir=PATH_DATA, mode='test')
+        ds_test_experiment = ImagesDS(df=df_test_experiment, img_dir=PATH_DATA, mode='test', num_workers=num_workers)
 
         if not debug:
             model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
