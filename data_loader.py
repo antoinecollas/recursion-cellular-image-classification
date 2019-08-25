@@ -1,6 +1,7 @@
 from random import choice
 from copy import deepcopy
 from PIL import Image
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -19,6 +20,20 @@ class ImagesDS(torch.utils.data.Dataset):
             ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1),
             RandomCrop(height=364, width=364, p=1)
             ])
+
+        self.img = dict()
+        print('Loading images:')
+        for index in tqdm(range(len(self.records))):
+            paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
+            paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
+            img_site_1 = np.stack([self._load_img(img_path) for img_path in paths_site_1], axis=2)
+            img_site_2 = np.stack([self._load_img(img_path) for img_path in paths_site_2], axis=2)
+            experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
+            if not(experiment in self.img):
+                self.img[experiment] = dict()
+            if not(plate in self.img[experiment]):
+                self.img[experiment][plate] = dict()
+            self.img[experiment][plate][well] = [img_site_1, img_site_2]
         
     @staticmethod
     def _load_img(img_path):
@@ -45,18 +60,15 @@ class ImagesDS(torch.utils.data.Dataset):
         return img
 
     def _get_img_path(self, index, channel, site):
-        experiment, well, plate = self.records[index].experiment, self.records[index].well, self.records[index].plate
+        experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
         return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.png'])
         
     def __getitem__(self, index):
-        paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
-        paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
+        experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
+        img_site_1, img_site_2 = self.img[experiment][plate][well]
 
-        img_site_1 = np.stack([self._load_img(img_path) for img_path in paths_site_1], axis=2)
         img_site_1_transformed = self._transform(img_site_1)
         # self._show_imgs([img_site_1, img_site_1_transformed])
-
-        img_site_2 = np.stack([self._load_img(img_path) for img_path in paths_site_2], axis=2)
         img_site_2_transformed = self._transform(img_site_2)
         # self._show_imgs([img_site_2, img_site_2_transformed])
 
