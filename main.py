@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
+import torch.backends.cudnn as cudnn
 
 if torch.cuda.is_available():
     try:
@@ -31,6 +32,7 @@ parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--lr', type=float)
 parser.add_argument('--train', default=False, action='store_true')
+parser.add_argument('--no_pretrain', default=False, action='store_true')
 
 args = parser.parse_args()
 
@@ -44,7 +46,7 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
     sys.exit(1)
 
 HYPERPARAMS = {
-    'pretrained': True,
+    'pretrained': False if args.no_pretrain else True,
     'scheduler': True
 }
 
@@ -70,6 +72,7 @@ else:
 
 if torch.cuda.is_available():
     HYPERPARAMS['bs'] = HYPERPARAMS['bs']*torch.cuda.device_count()
+    # cudnn.benchmark = True
 
 if lr is None:
     HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
