@@ -2,6 +2,8 @@ from random import choice
 from copy import deepcopy
 from PIL import Image
 from tqdm import tqdm
+import multiprocessing
+import os
 
 import numpy as np
 import torch
@@ -21,24 +23,29 @@ class ImagesDS(torch.utils.data.Dataset):
             RandomCrop(height=364, width=364, p=1)
             ])
 
-        self.img = dict()
-        print('Loading images:')
-        for index in tqdm(range(len(self.records))):
-            paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
-            paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
-            img_site_1 = np.stack([self._load_img(img_path) for img_path in paths_site_1], axis=2)
-            img_site_2 = np.stack([self._load_img(img_path) for img_path in paths_site_2], axis=2)
+        print('Loading images...')
+        pool = multiprocessing.Pool(os.cpu_count())
+        imgs = pool.map(self._load_imgs, range(len(self.records)))
+
+        self.imgs = dict()
+        for index in range(len(self.records)):
             experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-            if not(experiment in self.img):
-                self.img[experiment] = dict()
-            if not(plate in self.img[experiment]):
-                self.img[experiment][plate] = dict()
-            self.img[experiment][plate][well] = [img_site_1, img_site_2]
-        
-    @staticmethod
-    def _load_img(img_path):
-        img = np.asarray(Image.open(img_path))
-        return img
+            if not(experiment in self.imgs):
+                self.imgs[experiment] = dict()
+            if not(plate in self.imgs[experiment]):
+                self.imgs[experiment][plate] = dict()
+            self.imgs[experiment][plate][well] = imgs[index]
+
+    def _get_img_path(self, index, channel, site):
+            experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
+            return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.png'])
+
+    def _load_imgs(self, index):
+        paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
+        paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
+        img_site_1 = np.stack([np.asarray(Image.open(img_path)) for img_path in paths_site_1], axis=2)
+        img_site_2 = np.stack([np.asarray(Image.open(img_path)) for img_path in paths_site_2], axis=2)
+        return [img_site_1, img_site_2]
 
     @staticmethod
     def _show_imgs(imgs):
@@ -59,13 +66,9 @@ class ImagesDS(torch.utils.data.Dataset):
         img = self.transform(image=img)['image']    
         return img
 
-    def _get_img_path(self, index, channel, site):
-        experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-        return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.png'])
-        
     def __getitem__(self, index):
         experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-        img_site_1, img_site_2 = self.img[experiment][plate][well]
+        img_site_1, img_site_2 = self.imgs[experiment][plate][well]
 
         img_site_1_transformed = self._transform(img_site_1)
         # self._show_imgs([img_site_1, img_site_1_transformed])
