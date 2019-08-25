@@ -1,11 +1,12 @@
 source config_gcp.sh
 
-gcloud compute disks create $INSTANCE_NAME \
+gcloud beta compute disks create $INSTANCE_NAME \
     --project=$PROJECT \
-    --size=200GB \
-    --zone $ZONE \
-    --source-snapshot="recursion-cellular-image-classification-v2" \
-    --type=pd-ssd
+    --type=pd-ssd \
+    --size=500GB \
+    --zone=$ZONE \
+    --source-snapshot=recursion-cellular-image-classification-v2 \
+    --physical-block-size=16384
 
 gcloud beta compute instances create $INSTANCE_NAME \
     --project=$PROJECT \
