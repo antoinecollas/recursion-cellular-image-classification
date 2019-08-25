@@ -24,8 +24,17 @@ class ImagesDS(torch.utils.data.Dataset):
             ])
 
         print('Loading images...')
+        imgs = list()
         pool = multiprocessing.Pool(os.cpu_count())
-        imgs = pool.map(self._load_imgs, range(len(self.records)))
+        pbar = tqdm(total=len(self.records))
+        def update(*a):
+            pbar.update()
+        for i in range(pbar.total):
+            imgs.append(pool.apply_async(self._load_imgs, args=(i,), callback=update))
+        pool.close()
+        pool.join()
+        for i in range(len(imgs)):
+            imgs[i] = imgs[i].get()
 
         self.imgs = dict()
         for index in range(len(self.records)):
