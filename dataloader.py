@@ -6,6 +6,7 @@ import multiprocessing
 import os
 
 import numpy as np
+import cv2
 import torch
 
 from albumentations.core.composition import Compose
@@ -54,8 +55,16 @@ class ImagesDS(torch.utils.data.Dataset):
     def _load_imgs(self, index):
         paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
         paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
-        img_site_1 = np.stack([np.asarray(Image.open(img_path), dtype=np.uint8) for img_path in paths_site_1], axis=2)
-        img_site_2 = np.stack([np.asarray(Image.open(img_path), dtype=np.uint8) for img_path in paths_site_2], axis=2)
+        
+        img_site_1, img_site_2 = list(), list()
+        for img_path in paths_site_1:
+            with open(img_path,'rb') as f: 
+                img_site_1.append(f.read())
+ 
+        for img_path in paths_site_2:
+            with open(img_path,'rb') as f: 
+                img_site_2.append(f.read())
+ 
         return [img_site_1, img_site_2]
 
     @staticmethod
@@ -80,6 +89,16 @@ class ImagesDS(torch.utils.data.Dataset):
     def __getitem__(self, index):
         experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
         img_site_1, img_site_2 = self.imgs[experiment][plate][well]
+
+        temp = list()
+        for img in img_site_1:
+            temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
+        img_site_1 = np.moveaxis(np.stack(temp), 0, 2)
+
+        temp = list()
+        for img in img_site_2:
+            temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
+        img_site_2 = np.moveaxis(np.stack(temp), 0, 2)
 
         img_site_1_transformed = self._transform(img_site_1)
         # self._show_imgs([img_site_1, img_site_1_transformed])
