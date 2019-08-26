@@ -122,8 +122,6 @@ if training:
 
     print('\n\n########## TRAINING STEP 2 ##########')
 
-    if not debug:
-        HYPERPARAMS['nb_epochs'] = HYPERPARAMS['nb_epochs']//5
     HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
 
     for celltype in df_train['celltype'].unique():
