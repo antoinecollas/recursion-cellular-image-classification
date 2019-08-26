@@ -25,6 +25,8 @@ class ImagesDS(torch.utils.data.Dataset):
 
         print('Loading images...')
         imgs = list()
+        if num_workers < 1:
+            num_workers = 1
         pool = multiprocessing.Pool(num_workers)
         pbar = tqdm(total=len(self.records))
         def update(*a):
@@ -52,8 +54,8 @@ class ImagesDS(torch.utils.data.Dataset):
     def _load_imgs(self, index):
         paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
         paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
-        img_site_1 = np.stack([np.asarray(Image.open(img_path)) for img_path in paths_site_1], axis=2)
-        img_site_2 = np.stack([np.asarray(Image.open(img_path)) for img_path in paths_site_2], axis=2)
+        img_site_1 = np.stack([np.asarray(Image.open(img_path), dtype=np.uint8) for img_path in paths_site_1], axis=2)
+        img_site_2 = np.stack([np.asarray(Image.open(img_path), dtype=np.uint8) for img_path in paths_site_2], axis=2)
         return [img_site_1, img_site_2]
 
     @staticmethod

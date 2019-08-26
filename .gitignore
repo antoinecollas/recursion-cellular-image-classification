@@ -1,9 +1,12 @@
-data/
-.vscode/
 board/
+data/
+examples/*
 models/
 submission*.csv
+*.prof
+
 .DS_STORE
+.vscode/
 
 #### Default gitignore from github:
 

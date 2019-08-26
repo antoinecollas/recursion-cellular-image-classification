@@ -16,7 +16,7 @@ if torch.cuda.is_available():
     except ImportError:
         raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run this example.")
 
-from data_loader import ImagesDS
+from dataloader import ImagesDS
 from models import TwoSitesNN, DummyClassifier
 
 from train import train
@@ -33,7 +33,6 @@ parser.add_argument('--experiment_id')
 parser.add_argument('--lr', type=float)
 parser.add_argument('--epoch', default=100, type=int)
 parser.add_argument('--train', default=False, action='store_true')
-parser.add_argument('--no_pretrain', default=False, action='store_true')
 
 args = parser.parse_args()
 
@@ -47,21 +46,22 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
     sys.exit(1)
 
 HYPERPARAMS = {
-    'pretrained': False if args.no_pretrain else True,
+        'pretrained': False if debug else True,
     'scheduler': True
 }
 
 if debug:
-    PATH_DATA = 'data/samples'
+    HYPERPARAMS['nb_examples'] = 10
     HYPERPARAMS['nb_epochs'] = 2
     HYPERPARAMS['patience'] = 100
     HYPERPARAMS['bs'] = 2
 else:
-    PATH_DATA = 'data'
+    HYPERPARAMS['nb_examples'] = float('inf')
     HYPERPARAMS['nb_epochs'] = args.epoch
     HYPERPARAMS['patience'] = 10
     HYPERPARAMS['bs'] = 48
-
+    
+PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -109,6 +109,8 @@ if training:
     df = pd.read_csv(PATH_METADATA+'/train.csv')
     df['celltype'] = df['experiment'].apply(get_celltype)
     df_train, df_val = train_test_split(df, test_size = 0.1, random_state=42)
+    df_train = df_train[:HYPERPARAMS['nb_examples']]
+    df_val = df_val[:HYPERPARAMS['nb_examples']]
     print('Size training dataset: {}'.format(len(df_train)))
     print('Size validation dataset: {}'.format(len(df_val)))
 
@@ -136,8 +138,7 @@ if training:
         model_cell = deepcopy(model)
         model.module.pretrained = False
         experiment_id_cell = experiment_id + '_' + celltype
-        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, optimizer, HYPERPARAMS, num_workers, \
-            device, debug)
+        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, optimizer, HYPERPARAMS, num_workers, device, debug)
 
 print('\n\n########## TEST ##########')
 
