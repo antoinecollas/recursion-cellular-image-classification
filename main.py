@@ -76,7 +76,7 @@ else:
 
 if torch.cuda.is_available():
     HYPERPARAMS['bs'] = HYPERPARAMS['bs']*torch.cuda.device_count()
-    # cudnn.benchmark = True
+    cudnn.benchmark = True
 
 if lr is None:
     HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
