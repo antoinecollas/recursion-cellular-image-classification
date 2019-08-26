@@ -46,24 +46,18 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
     sys.exit(1)
 
 HYPERPARAMS = {
-    'pretrained': False if debug else True,
+    'pretrained': False if (debug and not torch.cuda.is_available()) else True,
     'nb_epochs': args.epoch,
+    'nb_examples': 100 if debug else float('inf'),
     'scheduler': True,
+    'bs': 2 if (debug and not torch.cuda.is_available()) else 48,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
-    'early_stopping': False
+    'early_stopping': False,
+    'patience': 10
     }
 
-if debug:
-    HYPERPARAMS['nb_examples'] = 10
-    HYPERPARAMS['patience'] = 100
-    HYPERPARAMS['bs'] = 2
-else:
-    HYPERPARAMS['nb_examples'] = float('inf')
-    HYPERPARAMS['patience'] = 10
-    HYPERPARAMS['bs'] = 48
-    
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
