@@ -46,18 +46,21 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
     sys.exit(1)
 
 HYPERPARAMS = {
-        'pretrained': False if debug else True,
-    'scheduler': True
-}
+    'pretrained': False if debug else True,
+    'nb_epochs': args.epoch,
+    'scheduler': True,
+    'momentum': 0.9,
+    'nesterov': True,
+    'weight_decay': 3e-5,
+    'early_stopping': False
+    }
 
 if debug:
     HYPERPARAMS['nb_examples'] = 10
-    HYPERPARAMS['nb_epochs'] = 2
     HYPERPARAMS['patience'] = 100
     HYPERPARAMS['bs'] = 2
 else:
     HYPERPARAMS['nb_examples'] = float('inf')
-    HYPERPARAMS['nb_epochs'] = args.epoch
     HYPERPARAMS['patience'] = 10
     HYPERPARAMS['bs'] = 48
     
@@ -79,12 +82,6 @@ if lr is None:
     HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
 else:
     HYPERPARAMS['lr'] = lr
-
-HYPERPARAMS['momentum'] = 0.9
-HYPERPARAMS['nesterov'] = True
-HYPERPARAMS['weight_decay'] = 3e-5
-
-HYPERPARAMS['early_stopping'] = False
 
 print('Number of workers used:', num_workers, '/', os.cpu_count())
 print('Number of GPUs used:', torch.cuda.device_count())
