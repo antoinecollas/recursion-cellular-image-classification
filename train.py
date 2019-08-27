@@ -9,32 +9,7 @@ from ignite.metrics import Loss, Accuracy
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
-
-if torch.cuda.device_count():
-    try:
-        from apex import amp
-    except ImportError:
-        raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run this example.")
-
-def create_supervised_trainer_fp16(model, optimizer, loss_fn, device=None, non_blocking=False,
-                              prepare_batch=_prepare_batch,
-                              output_transform=lambda x, y, y_pred, loss: loss.item()):
-    if device:
-        model.to(device)
-
-    def _update(engine, batch):
-        model.train()
-        optimizer.zero_grad()
-        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
-        y_pred = model(x)
-        loss = loss_fn(y_pred, y)
-        with amp.scale_loss(loss, optimizer) as scaled_loss:
-            scaled_loss.backward()
-        optimizer.step()
-        return output_transform(x, y, y_pred, loss)
-
-    return Engine(_update)
-            
+     
 def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_workers, device, debug):
 
     train_loader = torch.utils.data.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
@@ -42,17 +17,14 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     val_loader = torch.utils.data.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss().to(device)
 
     metrics = {
         'loss': Loss(criterion),
         'accuracy': Accuracy(),
     }
 
-    if torch.cuda.is_available():
-        trainer = create_supervised_trainer_fp16(model, optimizer, criterion, device=device)
-    else:
-        trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
+    trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
 
     if hyperparams['pretrained']:
         @trainer.on(Events.EPOCH_STARTED)

@@ -10,12 +10,6 @@ from sklearn.model_selection import train_test_split
 import torch
 import torch.backends.cudnn as cudnn
 
-if torch.cuda.is_available():
-    try:
-        from apex import amp
-    except ImportError:
-        raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run this example.")
-
 from dataloader import ImagesDS
 from models import TwoSitesNN, DummyClassifier
 
@@ -48,9 +42,9 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
 HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
     'nb_epochs': args.epoch,
-    'nb_examples': 960 if debug else None,
+    'nb_examples': 3840 if debug else None,
     'scheduler': True,
-    'bs': 2 if (debug and not torch.cuda.is_available()) else 48,
+    'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
@@ -88,8 +82,6 @@ model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes).
 optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
     weight_decay=HYPERPARAMS['weight_decay'])
-if torch.cuda.is_available():
-    model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
 model = torch.nn.DataParallel(model)
 
 if training:
