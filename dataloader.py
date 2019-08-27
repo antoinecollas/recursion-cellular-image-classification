@@ -50,7 +50,7 @@ class ImagesDS(torch.utils.data.Dataset):
 
     def _get_img_path(self, index, channel, site):
             experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-            return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.png'])
+            return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
     def _load_imgs(self, index):
         paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
