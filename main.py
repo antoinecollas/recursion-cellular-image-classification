@@ -118,7 +118,10 @@ if training:
     print('\n\n########## TRAINING STEP 2 ##########')
 
     HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
-
+    optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
+        momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
+        weight_decay=HYPERPARAMS['weight_decay'])
+        
     for celltype in df_train['celltype'].unique():
         print('\nTraining:', celltype)
         df_train_cell = df_train[df_train['celltype']==celltype]
