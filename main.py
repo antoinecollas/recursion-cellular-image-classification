@@ -107,6 +107,7 @@ if training:
 
     print('\n\n########## TRAINING STEP 2 ##########')
 
+    HYPERPARAMS['pretrained'] = False
     HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
     HYPERPARAMS['nb_epochs'] = HYPERPARAMS['nb_epochs']//5
     optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
