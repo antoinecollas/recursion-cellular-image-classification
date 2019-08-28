@@ -25,7 +25,6 @@ parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--lr', type=float)
-parser.add_argument('--epoch', default=100, type=int)
 parser.add_argument('--train', default=False, action='store_true')
 
 args = parser.parse_args()
@@ -41,7 +40,7 @@ if (training and (experiment_id is not None)) or ((not training) and (experiment
 
 HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
-    'nb_epochs': args.epoch,
+    'nb_epochs': 5 if debug else 100,
     'nb_examples': 3840 if debug else None,
     'scheduler': True,
     'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
@@ -110,7 +109,7 @@ if training:
     print('\n\n########## TRAINING STEP 2 ##########')
 
     HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
-    HYPERPARAMS['nb_epochs'] = 20
+    HYPERPARAMS['nb_epochs'] = HYPERPARAMS['nb_epochs']//5
     optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
         momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
         weight_decay=HYPERPARAMS['weight_decay'])
