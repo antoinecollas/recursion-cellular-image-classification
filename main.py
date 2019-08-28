@@ -34,9 +34,8 @@ experiment_id = args.experiment_id
 lr = args.lr
 training = args.train
 
-if (training and (experiment_id is not None)) or ((not training) and (experiment_id is None)):
-    print('Error between "training" and "experiment_id".')
-    sys.exit(1)
+if experiment_id is None:
+    experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
 HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
@@ -85,8 +84,6 @@ model = torch.nn.DataParallel(model)
 
 if training:
     print('########## TRAINING ##########')
-    
-    experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
     df = pd.read_csv(PATH_METADATA+'/train.csv')
     df['celltype'] = df['experiment'].apply(get_celltype)
@@ -98,13 +95,15 @@ if training:
     print('Size validation dataset: {}'.format(len(df_val)))
 
     print('########## TRAINING STEP 1 ##########')
+    path_model_step_1 = 'models/best_model_'+experiment_id+'.pth'
 
-    ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
-    ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+    if not os.path.exists(path_model_step_1):
+        ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+        ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
 
-    train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
+        train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
-    model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
+    model.load_state_dict(torch.load(path_model_step_1))
 
     print('\n\n########## TRAINING STEP 2 ##########')
 
@@ -115,15 +114,18 @@ if training:
         weight_decay=HYPERPARAMS['weight_decay'])
         
     for celltype in df_train['celltype'].unique():
-        print('\nTraining:', celltype)
         df_train_cell = df_train[df_train['celltype']==celltype]
         df_val_cell = df_val[df_val['celltype']==celltype]
         ds_train_cell = ImagesDS(df=df_train_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
         ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+        
         model_cell = deepcopy(model)
         model.module.pretrained = False
         experiment_id_cell = experiment_id + '_' + celltype
-        train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, optimizer, HYPERPARAMS, num_workers, device, debug)
+        path_model_step_2 = 'models/best_model_'+experiment_id_cell+'.pth'
+        if not os.path.exists(path_model_step_2):
+            print('\nTraining:', celltype)
+            train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, optimizer, HYPERPARAMS, num_workers, device, debug)
 
 print('\n\n########## TEST ##########')
 
