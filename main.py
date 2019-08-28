@@ -142,7 +142,10 @@ if debug:
 
 # We use the fact that some siRNA are always present on the plates.
 plate_groups = np.zeros((1108,4), int)
-df = pd.read_csv('data/metadata/train.csv')
+if debug and (device=='cpu'):
+    df = pd.read_csv('data/full_metadata/train.csv')
+else:
+    df = pd.read_csv('data/metadata/train.csv')
 for sirna in range(nb_classes):
     grp = df.loc[df.sirna==sirna,:].plate.value_counts().index.values
     assert len(grp) == 3

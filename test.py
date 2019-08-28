@@ -20,11 +20,28 @@ def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, 
             else:
                 preds = np.concatenate([preds, output], axis=0)
 
+    def rescale(preds):
+        temp = np.sum(preds, axis=1)
+        temp[temp==0] = 1
+        temp = np.repeat(temp[:, np.newaxis], preds.shape[1], axis=1)
+        preds = preds / temp
+        return preds
+
     assert len(preds) == len(df_test)
     mask = np.repeat(plate_groups[np.newaxis, :, experiment_type], len(preds), axis=0) != \
            np.repeat(df_test.plate.values[:, np.newaxis], 1108, axis=1)
     preds[mask] = 0
+    preds = rescale(preds)
 
-    preds = preds.argmax(1)
+    results = np.zeros(preds.shape[0])
+    for i in range(preds.shape[0]):
+        max_per_row_idx = np.argmax(preds, axis=1)
+        max_row_idx = np.argmax(preds[np.arange(len(preds)), max_per_row_idx])
+        max_column_idx = max_per_row_idx[max_row_idx]
+        max_prob = preds[max_row_idx, max_column_idx]
+        results[max_row_idx] = max_column_idx
+        preds[:, max_column_idx] = 0
+        preds[max_row_idx, :] = 0
+        preds = rescale(preds)
 
-    return preds
+    return results
