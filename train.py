@@ -9,7 +9,9 @@ from ignite.metrics import Loss, Accuracy
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
-     
+
+from loss import ArcFaceLoss
+
 def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_workers, device, debug):
 
     train_loader = torch.utils.data.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
@@ -17,7 +19,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     val_loader = torch.utils.data.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
 
-    criterion = nn.CrossEntropyLoss().to(device)
+    criterion = ArcFaceLoss(s=64, m=0.5).to(device)
 
     metrics = {
         'loss': Loss(criterion),
@@ -31,9 +33,10 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
         def turn_on_layers(engine):
             epoch = engine.state.epoch
             if epoch == 1:
+                print()
                 temp = next(model.named_children())[1]
                 for name, child in temp.named_children():
-                    if name == 'classifier':
+                    if (name=='mlp') or (name=='weight_arcface'):
                         print(name + ' is unfrozen')
                         for param in child.parameters():
                             param.requires_grad = True
@@ -42,6 +45,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                             param.requires_grad = False
 
             if epoch == 3:
+                print()
                 print('Turn on all the layers')
                 for name, child in model.named_children():
                     for param in child.parameters():

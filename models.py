@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torchvision import models
 
 class TwoSitesNN(nn.Module):
-    def __init__(self, pretrained, nb_classes):
+    def __init__(self, pretrained, nb_classes, size_features=512, dropout=0.3):
         super(TwoSitesNN, self).__init__()
 
         self.base_nn = models.resnet50(pretrained=pretrained)
@@ -14,10 +14,17 @@ class TwoSitesNN(nn.Module):
         with torch.no_grad():
             new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
         self.base_nn.conv1 = new_conv
-        num_ftrs = self.base_nn.fc.in_features
+        num_ftrs_cnn = self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
 
-        self.classifier = torch.nn.Linear(num_ftrs, nb_classes)
+        self.mlp = nn.Sequential(
+                nn.BatchNorm1d(num_ftrs_cnn),
+                nn.Dropout(dropout, inplace=True),
+                nn.Linear(num_ftrs_cnn, size_features),
+                nn.BatchNorm1d(size_features)
+                )
+        self.weight_arcface = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
+        nn.init.xavier_uniform_(self.weight_arcface)
 
     def forward(self, x):
         # x shape: [batch, site, channel, h, w]
@@ -31,9 +38,10 @@ class TwoSitesNN(nn.Module):
         features_site_1 = features[:size_site_1]
         features_site_2 = features[size_site_1:]
         features = (features_site_1+features_site_2)/2
-        output = self.classifier(features)
 
-        return output
+        features = self.mlp(features)
+        cos_th = F.linear(F.normalize(features), F.normalize(self.weight_arcface)).clamp(-1, 1)
+        return cos_th
 
 class DummyClassifier():
     def __init__(self, nb_classes):
@@ -41,5 +49,5 @@ class DummyClassifier():
     
     def __call__(self, x):
         bs = x.shape[0]
-        output = torch.zeros((bs, self.nb_classes)).random_(-10000, 10000)/1000
+        output = torch.zeros((bs, self.nb_classes)).random_(-10000, 10000)/10000
         return output
