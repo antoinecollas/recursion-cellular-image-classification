@@ -11,11 +11,9 @@ class ArcFaceLoss():
         self.sin_m = math.sin(m)
         self.th = math.cos(math.pi - m)
         self.mm = math.sin(math.pi - m) * m
-        self.softmax = nn.Softmax()
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def to(self, device):
-        self.softmax = self.softmax.to(device)
         self.cross_entropy = self.cross_entropy.to(device)
         return self
 
@@ -32,6 +30,5 @@ class ArcFaceLoss():
         output = (one_hot * cos_th_m) + ((1.0 - one_hot) * cos_th)
         output = output * self.s
         
-        output = self.softmax(output)
         output = self.cross_entropy(output, target)
         return output
