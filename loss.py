@@ -16,7 +16,7 @@ class ArcFaceLoss():
 
     def to(self, device):
         self.softmax = self.softmax.to(device)
-        self.cross_entropy = nn.CrossEntropyLoss().to(device)
+        self.cross_entropy = self.cross_entropy.to(device)
         return self
 
     def __call__(self, cos_th, target):
