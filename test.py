@@ -9,8 +9,6 @@ import torch.nn.functional as F
 def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers, device):
     test_loader = torch.utils.data.DataLoader(ds_test, batch_size=bs, shuffle=False, num_workers=num_workers)
 
-    MIN_VALUE = -1 # minimum value for a cosine
-
     with torch.no_grad():
         for i, (x, _) in enumerate(tqdm(test_loader)):
             x = x.to(device)
@@ -28,10 +26,13 @@ def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, 
         preds = preds / temp
         return preds
 
+    preds = preds + 1 # all predictions have to be positive and -1 is the minimium value of a cosine
+    preds = rescale(preds)
+
     assert len(preds) == len(df_test)
     mask = np.repeat(plate_groups[np.newaxis, :, experiment_type], len(preds), axis=0) != \
            np.repeat(df_test.plate.values[:, np.newaxis], 1108, axis=1)
-    preds[mask] = MIN_VALUE
+    preds[mask] = 0
     preds = rescale(preds)
 
     results = np.zeros(preds.shape[0])
@@ -41,8 +42,8 @@ def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, 
         max_column_idx = max_per_row_idx[max_row_idx]
         max_prob = preds[max_row_idx, max_column_idx]
         results[max_row_idx] = max_column_idx
-        preds[:, max_column_idx] = MIN_VALUE
-        preds[max_row_idx, :] = MIN_VALUE
+        preds[:, max_column_idx] = 0
+        preds[max_row_idx, :] = 0
         preds = rescale(preds)
 
     return results
