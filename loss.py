@@ -18,13 +18,8 @@ class ArcFaceLoss():
         return self
 
     def __call__(self, cos_th, target):
-        # cos(theta+m)
-        sin_th = torch.sqrt(1.0 - torch.pow(cos_th, 2)) #.clamp(0, 1))
-        cos_th_m = cos_th * self.cos_m - sin_th * self.sin_m
-
-        # if cos(theta) <= cos(theta+m) (i.e theta+m >= pi): cos(theta) - sin(pi-m)*m
-        cos_th_m = torch.where(cos_th-self.th > 0, cos_th_m, cos_th - self.mm)
-
+        th = torch.acos(cos_th)
+        cos_th_m = torch.cos(th+self.m)
         one_hot = torch.zeros_like(cos_th)
         one_hot.scatter_(1, target.view(-1, 1), 1)
         output = (one_hot * cos_th_m) + ((1.0 - one_hot) * cos_th)

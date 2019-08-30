@@ -44,7 +44,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                         for param in child.parameters():
                             param.requires_grad = False
 
-            if epoch == 3:
+            if epoch == 10:
                 print()
                 print('Turn on all the layers')
                 for name, child in model.named_children():

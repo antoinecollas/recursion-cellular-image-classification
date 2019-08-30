@@ -21,6 +21,7 @@ class TwoSitesNN(nn.Module):
                 nn.BatchNorm1d(num_ftrs_cnn),
                 nn.Dropout(dropout),
                 nn.Linear(num_ftrs_cnn, size_features),
+                nn.ReLU(),
                 nn.BatchNorm1d(size_features)
                 )
         self.weight_arcface = nn.Parameter(torch.FloatTensor(nb_classes, size_features))

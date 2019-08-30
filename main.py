@@ -69,7 +69,8 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 if lr is None:
-    HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
+    # HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
+    HYPERPARAMS['lr'] = 4e-5 * HYPERPARAMS['bs']
 else:
     HYPERPARAMS['lr'] = lr
 
