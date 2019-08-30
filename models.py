@@ -19,7 +19,7 @@ class TwoSitesNN(nn.Module):
 
         self.mlp = nn.Sequential(
                 nn.BatchNorm1d(num_ftrs_cnn),
-                nn.Dropout(dropout, inplace=True),
+                nn.Dropout(dropout),
                 nn.Linear(num_ftrs_cnn, size_features),
                 nn.BatchNorm1d(size_features)
                 )
