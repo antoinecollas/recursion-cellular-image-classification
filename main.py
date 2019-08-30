@@ -39,16 +39,20 @@ if experiment_id is None:
 
 HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
-    'nb_epochs': 20 if debug else 100,
-    'nb_examples': 3840 if debug else None,
+    'nb_epochs': 200,
     'scheduler': True,
     'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
     'early_stopping': False,
-    'patience': 10
+    'patience': 10,
+    'arcface': {
+        's': 64,
+        'm': 0.5
+    },
     }
+HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs'] if debug else None
 
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
@@ -91,8 +95,6 @@ if training:
     if HYPERPARAMS['nb_examples'] is not None:
         df_train = df_train[:HYPERPARAMS['nb_examples']]
         df_val = df_val[:HYPERPARAMS['nb_examples']]
-    if debug:
-        df_val = df_val[:HYPERPARAMS['bs']]
    
     print('Size training dataset: {}'.format(len(df_train)))
     print('Size validation dataset: {}'.format(len(df_val)))
