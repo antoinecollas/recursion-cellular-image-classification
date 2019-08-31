@@ -39,7 +39,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                 print()
                 temp = next(model.named_children())[1]
                 for name, child in temp.named_children():
-                    if (name=='mlp') or (name=='weight_arcface'):
+                    if (name=='mlp') or (name=='classifier'):
                         print(name + ' is unfrozen')
                         for param in child.parameters():
                             param.requires_grad = True
@@ -47,7 +47,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                         for param in child.parameters():
                             param.requires_grad = False
 
-            if epoch == 10:
+            if epoch == 3:
                 print()
                 print('Turn on all the layers')
                 for name, child in model.named_children():

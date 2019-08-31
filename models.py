@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torchvision import models
 
 class TwoSitesNN(nn.Module):
-    def __init__(self, pretrained, nb_classes, size_features=512, dropout=0.3):
+    def __init__(self, pretrained, nb_classes, loss, size_features=512, dropout=0.3):
         super(TwoSitesNN, self).__init__()
 
         self.base_nn = models.resnet50(pretrained=pretrained)
@@ -16,16 +16,20 @@ class TwoSitesNN(nn.Module):
         self.base_nn.conv1 = new_conv
         num_ftrs_cnn = self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
-        self.mlp = nn.Sequential(
-                nn.BatchNorm1d(num_ftrs_cnn),
-                nn.Dropout(dropout),
-                nn.Linear(num_ftrs_cnn, size_features),
-                nn.ReLU(),
-                nn.BatchNorm1d(size_features)
-                )
 
-        self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
-        nn.init.xavier_uniform_(self.weight)
+        self.loss = loss
+        if self.loss=='softmax':
+            self.classifier = nn.Linear(num_ftrs_cnn, nb_classes)
+        elif self.loss=='arcface':
+            self.mlp = nn.Sequential(
+                    nn.BatchNorm1d(num_ftrs_cnn),
+                    nn.Dropout(dropout),
+                    nn.Linear(num_ftrs_cnn, size_features),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(size_features)
+                    )
+            self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
+            nn.init.xavier_uniform_(self.weight)
 
     def forward(self, x):
         # x shape: [batch, site, channel, h, w]
@@ -39,9 +43,12 @@ class TwoSitesNN(nn.Module):
         features_site_1 = features[:size_site_1]
         features_site_2 = features[size_site_1:]
         features = (features_site_1+features_site_2)/2
-        output = self.mlp(features)
 
-        output = F.linear(F.normalize(output), F.normalize(self.weight)).clamp(-1, 1)
+        if self.loss=='softmax':
+            output = self.classifier(features)
+        elif self.loss=='arcface':
+            output = self.mlp(features)
+            output = F.linear(F.normalize(output), F.normalize(self.weight)).clamp(-1, 1)
 
         return output
 

@@ -83,7 +83,7 @@ def get_celltype(experiment):
     return experiment.split('-')[0]
 
 nb_classes = 1108
-model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes).to(device)
+model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
 optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
     weight_decay=HYPERPARAMS['weight_decay'])
@@ -143,7 +143,7 @@ df_test['celltype'] = df_test['experiment'].apply(get_celltype)
 print('Size test dataset: {}'.format(len(df_test)))
 
 nb_classes = 1108
-model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes)
+model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
 model = torch.nn.DataParallel(model).to(device)
 if debug:
     model = DummyClassifier(nb_classes=nb_classes)
