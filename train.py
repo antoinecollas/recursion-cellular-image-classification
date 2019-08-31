@@ -19,7 +19,10 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     val_loader = torch.utils.data.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
 
-    criterion = ArcFaceLoss(s=hyperparams['arcface']['s'], m=hyperparams['arcface']['m']).to(device)
+    if hyperparams['loss']=='softmax':
+        criterion = nn.CrossEntropyLoss().to(device)
+    elif hyperparams['loss']=='arcface':
+        criterion = ArcFaceLoss(s=hyperparams['arcface']['s'], m=hyperparams['arcface']['m']).to(device)
 
     metrics = {
         'loss': Loss(criterion),

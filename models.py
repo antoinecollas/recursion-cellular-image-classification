@@ -16,7 +16,6 @@ class TwoSitesNN(nn.Module):
         self.base_nn.conv1 = new_conv
         num_ftrs_cnn = self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
-
         self.mlp = nn.Sequential(
                 nn.BatchNorm1d(num_ftrs_cnn),
                 nn.Dropout(dropout),
@@ -24,8 +23,9 @@ class TwoSitesNN(nn.Module):
                 nn.ReLU(),
                 nn.BatchNorm1d(size_features)
                 )
-        self.weight_arcface = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
-        nn.init.xavier_uniform_(self.weight_arcface)
+
+        self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
+        nn.init.xavier_uniform_(self.weight)
 
     def forward(self, x):
         # x shape: [batch, site, channel, h, w]
@@ -39,10 +39,11 @@ class TwoSitesNN(nn.Module):
         features_site_1 = features[:size_site_1]
         features_site_2 = features[size_site_1:]
         features = (features_site_1+features_site_2)/2
+        output = self.mlp(features)
 
-        features = self.mlp(features)
-        cos_th = F.linear(F.normalize(features), F.normalize(self.weight_arcface)).clamp(-1, 1)
-        return cos_th
+        output = F.linear(F.normalize(output), F.normalize(self.weight)).clamp(-1, 1)
+
+        return output
 
 class DummyClassifier():
     def __init__(self, nb_classes):

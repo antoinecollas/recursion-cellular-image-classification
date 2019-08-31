@@ -24,6 +24,7 @@ warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
+parser.add_argument('--loss', choices=['softmax', 'arcface'], default='softmax')
 parser.add_argument('--lr', type=float)
 parser.add_argument('--train', default=False, action='store_true')
 
@@ -31,6 +32,7 @@ args = parser.parse_args()
 
 debug = args.debug
 experiment_id = args.experiment_id
+loss = args.loss
 lr = args.lr
 training = args.train
 
@@ -47,8 +49,9 @@ HYPERPARAMS = {
     'weight_decay': 3e-5,
     'early_stopping': False,
     'patience': 10,
+    'loss': loss,
     'arcface': {
-        's': 64,
+        's': 30,
         'm': 0.5
     },
     }
@@ -69,8 +72,7 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 if lr is None:
-    # HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
-    HYPERPARAMS['lr'] = 4e-5 * HYPERPARAMS['bs']
+    HYPERPARAMS['lr'] = 0.002 * HYPERPARAMS['bs']
 else:
     HYPERPARAMS['lr'] = lr
 
