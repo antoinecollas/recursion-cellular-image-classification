@@ -106,7 +106,7 @@ if training:
 
     if not os.path.exists(path_model_step_1):
         ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
-        ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+        ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
 
         train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
@@ -125,7 +125,7 @@ if training:
         df_train_cell = df_train[df_train['celltype']==celltype]
         df_val_cell = df_val[df_val['celltype']==celltype]
         ds_train_cell = ImagesDS(df=df_train_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
-        ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+        ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
         
         model_cell = deepcopy(model)
         model.module.pretrained = False
