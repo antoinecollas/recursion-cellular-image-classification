@@ -110,9 +110,9 @@ class ImagesDS(torch.utils.data.Dataset):
             # self._show_imgs([img_site_1, img_site_1_transformed])
             img_site_2 = self._transform(img_site_2)
             # self._show_imgs([img_site_2, img_site_2_transformed])
-            img_site_1 = np.moveaxis(img_site_1, 2, 0)
-            img_site_2 = np.moveaxis(img_site_2, 2, 0)
 
+        img_site_1 = np.moveaxis(img_site_1, 2, 0)
+        img_site_2 = np.moveaxis(img_site_2, 2, 0)
         img = torch.Tensor(np.stack([img_site_1, img_site_2]))
 
         if (self.mode == 'train') or (self.mode == 'val'):
