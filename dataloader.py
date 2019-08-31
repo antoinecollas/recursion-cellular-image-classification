@@ -1,10 +1,11 @@
-from random import choice
+import random
 from copy import deepcopy
 from PIL import Image
 from tqdm import tqdm
 import multiprocessing
 import os
 
+import pandas as pd
 import numpy as np
 import cv2
 import torch
@@ -116,3 +117,27 @@ class ImagesDS(torch.utils.data.Dataset):
 
     def __len__(self):
         return self.len
+
+def train_test_split(df, random_state):
+    random.seed(random_state)
+    df_train, df_val = list(), list()
+    for celltype in df['celltype'].unique():
+        df_celltype = df[df['celltype']==celltype]
+        experiments = df_celltype['experiment'].unique()
+        nb_experiments_val = len(experiments)//3
+        random.shuffle(experiments)
+        experiments_val = experiments[:nb_experiments_val]
+        mask_val = np.zeros(len(df_celltype), dtype=np.uint8)
+        for experiment_val in experiments_val:
+            mask_val = mask_val + (df_celltype['experiment']==experiment_val)
+        mask_val = (mask_val==1)
+        mask_train = ~mask_val
+        df_celltype_train = df_celltype[mask_train]
+        df_celltype_val = df_celltype[mask_val]
+        df_train.append(df_celltype_train)
+        df_val.append(df_celltype_val)
+    df_train = pd.concat(df_train)
+    df_train = df_train.sample(frac=1, random_state=random_state).reset_index(drop=True)
+    df_val = pd.concat(df_val)
+    df_val = df_val.sample(frac=1, random_state=random_state).reset_index(drop=True)
+    return df_train, df_val

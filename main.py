@@ -6,11 +6,10 @@ import sys
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 import torch
 import torch.backends.cudnn as cudnn
 
-from dataloader import ImagesDS
+from dataloader import train_test_split, ImagesDS
 from models import TwoSitesNN, DummyClassifier
 
 from train import train
@@ -94,7 +93,7 @@ if training:
 
     df = pd.read_csv(PATH_METADATA+'/train.csv')
     df['celltype'] = df['experiment'].apply(get_celltype)
-    df_train, df_val = train_test_split(df, test_size = 0.1, random_state=42)
+    df_train, df_val = train_test_split(df, random_state=42)
     if HYPERPARAMS['nb_examples'] is not None:
         df_train = df_train[:HYPERPARAMS['nb_examples']]
         df_val = df_val[:HYPERPARAMS['nb_examples']]
