@@ -42,7 +42,7 @@ HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
     'nb_epochs': 100,
     'scheduler': True,
-    'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
+    'bs': 2 if (debug and not torch.cuda.is_available()) else 20,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
