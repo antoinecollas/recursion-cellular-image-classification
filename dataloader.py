@@ -51,7 +51,11 @@ class ImagesDS(torch.utils.data.Dataset):
 
     def _get_img_path(self, index, channel, site):
             experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-            return '/'.join([self.img_dir, self.mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
+            if (self.mode == 'train') or (self.mode == 'val'):
+                mode = 'train'
+            elif self.mode == 'test':
+                mode = 'test'
+            return '/'.join([self.img_dir, mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
     def _load_imgs(self, index):
         paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
@@ -101,18 +105,19 @@ class ImagesDS(torch.utils.data.Dataset):
             temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
         img_site_2 = np.moveaxis(np.stack(temp), 0, 2)
 
-        img_site_1_transformed = self._transform(img_site_1)
-        # self._show_imgs([img_site_1, img_site_1_transformed])
-        img_site_2_transformed = self._transform(img_site_2)
-        # self._show_imgs([img_site_2, img_site_2_transformed])
-
-        img_site_1_transformed = np.moveaxis(img_site_1_transformed, 2, 0)
-        img_site_2_transformed = np.moveaxis(img_site_2_transformed, 2, 0)
-        img = torch.Tensor(np.stack([img_site_1_transformed, img_site_2_transformed]))
-
         if self.mode == 'train':
+            img_site_1 = self._transform(img_site_1)
+            # self._show_imgs([img_site_1, img_site_1_transformed])
+            img_site_2 = self._transform(img_site_2)
+            # self._show_imgs([img_site_2, img_site_2_transformed])
+            img_site_1 = np.moveaxis(img_site_1, 2, 0)
+            img_site_2 = np.moveaxis(img_site_2, 2, 0)
+
+        img = torch.Tensor(np.stack([img_site_1, img_site_2]))
+
+        if (self.mode == 'train') or (self.mode == 'val'):
             return img, int(self.records[index].sirna)
-        else:
+        elif (self.mode == 'test'):
             return img, self.records[index].id_code
 
     def __len__(self):
