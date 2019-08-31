@@ -40,7 +40,7 @@ if experiment_id is None:
 
 HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
-    'nb_epochs': 200,
+    'nb_epochs': 100,
     'scheduler': True,
     'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
     'momentum': 0.9,
