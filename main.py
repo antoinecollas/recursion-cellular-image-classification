@@ -9,7 +9,8 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
-from dataloader import train_test_split, ImagesDS
+from sklearn.model_selection import train_test_split
+from dataloader import train_test_split as train_test_split_by_experiment, ImagesDS
 from models import TwoSitesNN, DummyClassifier
 
 from train import train
@@ -39,6 +40,7 @@ if experiment_id is None:
     experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
 HYPERPARAMS = {
+    'train_split_by_experiment': False if (debug and not torch.cuda.is_available()) else True,
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
     'nb_epochs': 100,
     'scheduler': True,
@@ -54,7 +56,7 @@ HYPERPARAMS = {
         'm': 0.5
     },
     }
-HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs'] if debug else None
+HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
 
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
@@ -93,7 +95,10 @@ if training:
 
     df = pd.read_csv(PATH_METADATA+'/train.csv')
     df['celltype'] = df['experiment'].apply(get_celltype)
-    df_train, df_val = train_test_split(df, random_state=42)
+    if HYPERPARAMS['train_split_by_experiment']:
+        df_train, df_val = train_test_split_by_experiment(df, random_state=42)
+    else:
+        df_train, df_val = train_test_split(df, test_size=0.3, random_state=42)
     if HYPERPARAMS['nb_examples'] is not None:
         df_train = df_train[:HYPERPARAMS['nb_examples']]
         df_val = df_val[:HYPERPARAMS['nb_examples']]
