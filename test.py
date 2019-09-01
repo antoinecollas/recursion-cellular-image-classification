@@ -13,6 +13,7 @@ def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, 
         for i, (x, _) in enumerate(tqdm(test_loader)):
             x = x.to(device)
             output = model(x)
+            output = F.softmax(output, 1)
             output = output.cpu().numpy()
             if i==0:
                 preds = output
@@ -25,9 +26,6 @@ def test(experiment_id, df_test, ds_test, plate_groups, experiment_type, model, 
         temp = np.repeat(temp[:, np.newaxis], preds.shape[1], axis=1)
         preds = preds / temp
         return preds
-
-    preds = preds + 1 # all predictions have to be positive and -1 is the minimium value of a cosine
-    preds = rescale(preds)
 
     assert len(preds) == len(df_test)
     mask = np.repeat(plate_groups[np.newaxis, :, experiment_type], len(preds), axis=0) != \
