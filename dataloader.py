@@ -11,7 +11,7 @@ import cv2
 import torch
 
 from albumentations.core.composition import Compose
-from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate
+from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop
 
 class ImagesDS(torch.utils.data.Dataset):
     def __init__(self, df, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
@@ -20,10 +20,13 @@ class ImagesDS(torch.utils.data.Dataset):
         self.mode = mode
         self.img_dir = img_dir
         self.len = df.shape[0]
-        self.transform = Compose([
-            ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1),
-            RandomCrop(height=364, width=364, p=1)
-            ])
+        self.transform_train = Compose([
+            ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
+            RandomCrop(height=364, width=364, p=1.0)
+            ], p=1.0)
+        self.transform_test = Compose([
+            CenterCrop(height=364, width=364, p=1.0)
+            ], p=1.0)
 
         print('Loading images...')
         imgs = list()
@@ -88,7 +91,10 @@ class ImagesDS(torch.utils.data.Dataset):
         plt.show()
 
     def _transform(self, img):
-        img = self.transform(image=img)['image']    
+        if self.mode == 'train':
+            img = self.transform_train(image=img)['image']    
+        elif (self.mode == 'val'):
+            img = self.transform_test(image=img)['image']    
         return img
 
     def __getitem__(self, index):
@@ -105,9 +111,8 @@ class ImagesDS(torch.utils.data.Dataset):
             temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
         img_site_2 = np.moveaxis(np.stack(temp), 0, 2)
 
-        if self.mode == 'train':
-            img_site_1 = self._transform(img_site_1)
-            img_site_2 = self._transform(img_site_2)
+        img_site_1 = self._transform(img_site_1)
+        img_site_2 = self._transform(img_site_2)
 
         # self._show_imgs([img_site_1])
         # self._show_imgs([img_site_2])
