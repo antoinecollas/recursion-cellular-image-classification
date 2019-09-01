@@ -72,18 +72,18 @@ class ImagesDS(torch.utils.data.Dataset):
  
         return [img_site_1, img_site_2]
 
-    @staticmethod
-    def _show_imgs(imgs):
+    def _show_imgs(self, imgs):
         from matplotlib import pyplot as plt
         import rxrx.io as rio
         import cv2
-        plt.figure()
+        fig = plt.figure()
         for i, img in enumerate(imgs):
             height, width, _ = img.shape
             img = cv2.resize(img, dsize=(512, 512), interpolation=cv2.INTER_CUBIC)
             img_rgb = np.array(rio.convert_tensor_to_rgb(img), dtype='uint8')
             img_rgb = cv2.resize(img_rgb, dsize=(height, width), interpolation=cv2.INTER_CUBIC)
-            plt.subplot(1, len(imgs), i+1)
+            ax = plt.subplot(1, len(imgs), i+1)
+            ax.title.set_text(self.mode)
             plt.imshow(img_rgb)
         plt.show()
 
@@ -107,10 +107,11 @@ class ImagesDS(torch.utils.data.Dataset):
 
         if self.mode == 'train':
             img_site_1 = self._transform(img_site_1)
-            # self._show_imgs([img_site_1, img_site_1_transformed])
             img_site_2 = self._transform(img_site_2)
-            # self._show_imgs([img_site_2, img_site_2_transformed])
 
+        # self._show_imgs([img_site_1])
+        # self._show_imgs([img_site_2])
+        
         img_site_1 = np.moveaxis(img_site_1, 2, 0)
         img_site_2 = np.moveaxis(img_site_2, 2, 0)
         img = torch.Tensor(np.stack([img_site_1, img_site_2]))
