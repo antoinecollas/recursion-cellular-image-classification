@@ -24,7 +24,7 @@ class ImagesDS(torch.utils.data.Dataset):
             ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
             RandomCrop(height=364, width=364, p=1.0)
             ], p=1.0)
-        self.transform_test = Compose([
+        self.transform_val = Compose([
             CenterCrop(height=364, width=364, p=1.0)
             ], p=1.0)
 
@@ -94,7 +94,7 @@ class ImagesDS(torch.utils.data.Dataset):
         if self.mode == 'train':
             img = self.transform_train(image=img)['image']    
         elif (self.mode == 'val'):
-            img = self.transform_test(image=img)['image']    
+            img = self.transform_val(image=img)['image']    
         return img
 
     def __getitem__(self, index):
