@@ -11,7 +11,7 @@ import cv2
 import torch
 
 from albumentations.core.composition import Compose
-from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop
+from albumentations.augmentations.transforms import Normalize, RandomCrop, ShiftScaleRotate, CenterCrop
 
 class ImagesDS(torch.utils.data.Dataset):
     def __init__(self, df, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
@@ -20,12 +20,22 @@ class ImagesDS(torch.utils.data.Dataset):
         self.mode = mode
         self.img_dir = img_dir
         self.len = df.shape[0]
+        mean = (0.02290913, 0.06102184, 0.03960226, 0.03904865, 0.02184808, 0.03553102)
+        std = (0.04808127, 0.06136712, 0.0375606, 0.04815974, 0.0472975, 0.03571597)
         self.transform_train = Compose([
+            Normalize(mean=mean, std=std, \
+                max_pixel_value=255.0, p=1.0),
             ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
             RandomCrop(height=364, width=364, p=1.0)
             ], p=1.0)
         self.transform_val = Compose([
+            Normalize(mean=mean, std=std, \
+                max_pixel_value=255.0, p=1.0),
             CenterCrop(height=364, width=364, p=1.0)
+            ], p=1.0)
+        self.transform_test = Compose([
+            Normalize(mean=mean, std=std, \
+                max_pixel_value=255.0, p=1.0),
             ], p=1.0)
 
         print('Loading images...')
@@ -93,8 +103,10 @@ class ImagesDS(torch.utils.data.Dataset):
     def _transform(self, img):
         if self.mode == 'train':
             img = self.transform_train(image=img)['image']    
-        elif (self.mode == 'val'):
+        elif self.mode == 'val':
             img = self.transform_val(image=img)['image']    
+        elif self.mode == 'test':
+            img = self.transform_test(image=img)['image']    
         return img
 
     def __getitem__(self, index):
@@ -104,12 +116,12 @@ class ImagesDS(torch.utils.data.Dataset):
         temp = list()
         for img in img_site_1:
             temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
-        img_site_1 = np.moveaxis(np.stack(temp), 0, 2)/255
+        img_site_1 = np.moveaxis(np.stack(temp), 0, 2)
 
         temp = list()
         for img in img_site_2:
             temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
-        img_site_2 = np.moveaxis(np.stack(temp), 0, 2)/255
+        img_site_2 = np.moveaxis(np.stack(temp), 0, 2)
 
         img_site_1 = self._transform(img_site_1)
         img_site_2 = self._transform(img_site_2)
