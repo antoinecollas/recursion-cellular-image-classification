@@ -44,7 +44,7 @@ HYPERPARAMS = {
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
     'nb_epochs': 100,
     'scheduler': True,
-    'bs': 2 if (debug and not torch.cuda.is_available()) else 20,
+    'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
@@ -120,24 +120,24 @@ if training:
     print('\n\n########## TRAINING STEP 2 ##########')
 
     HYPERPARAMS['pretrained'] = False
-    HYPERPARAMS['lr'] = HYPERPARAMS['lr']/10
     HYPERPARAMS['nb_epochs'] = HYPERPARAMS['nb_epochs']//5
-    optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
-        momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
-        weight_decay=HYPERPARAMS['weight_decay'])
         
     for celltype in df_train['celltype'].unique():
-        df_train_cell = df_train[df_train['celltype']==celltype]
-        df_val_cell = df_val[df_val['celltype']==celltype]
-        ds_train_cell = ImagesDS(df=df_train_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
-        ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
-        
-        model_cell = deepcopy(model)
-        model.module.pretrained = False
         experiment_id_cell = experiment_id + '_' + celltype
         path_model_step_2 = 'models/best_model_'+experiment_id_cell+'.pth'
+
         if not os.path.exists(path_model_step_2):
             print('\nTraining:', celltype)
+            df_train_cell = df_train[df_train['celltype']==celltype]
+            df_val_cell = df_val[df_val['celltype']==celltype]
+            ds_train_cell = ImagesDS(df=df_train_cell, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+            ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
+
+            model_cell = deepcopy(model)
+            model.module.pretrained = False
+            optimizer = torch.optim.SGD(model_cell.parameters(), lr=HYPERPARAMS['lr'], \
+                momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
+                weight_decay=HYPERPARAMS['weight_decay'])
             train(experiment_id_cell, ds_train_cell, ds_val_cell, model_cell, optimizer, HYPERPARAMS, num_workers, device, debug)
 
 print('\n\n########## TEST ##########')
@@ -178,7 +178,7 @@ for i, celltype in enumerate(df_test['celltype'].unique()):
         ds_test_experiment = ImagesDS(df=df_test_experiment, img_dir=PATH_DATA, mode='test', num_workers=num_workers)
 
         if not debug:
-            model.load_state_dict(torch.load('models/best_model_'+experiment_id+'.pth'))
+            model.load_state_dict(torch.load('models/best_model_'+experiment_id_cell+'.pth'))
             model.eval()
 
         temp = test(experiment_id_cell, df_test_experiment, ds_test_experiment, plate_groups, \
