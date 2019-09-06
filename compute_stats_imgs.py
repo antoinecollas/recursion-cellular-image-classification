@@ -9,7 +9,7 @@ nb_channels = 6
 count = np.zeros(nb_channels)
 sum_x = np.zeros(nb_channels)
 sum_x2 = np.zeros(nb_channels)
-for path in tqdm(paths[:1000]):
+for path in tqdm(paths):
     site = int(path.split('_')[1][1])-1
     im = cv2.imread(path, cv2.IMREAD_GRAYSCALE)/255
     count[site] += 1
@@ -25,7 +25,7 @@ print('std=', std)
 count_verification = np.zeros(nb_channels)
 sum_x_verification = np.zeros(nb_channels)
 sum_x2_verification = np.zeros(nb_channels)
-for path in tqdm(paths[:1000]):
+for path in tqdm(paths):
     site = int(path.split('_')[1][1])-1
     im = ((cv2.imread(path, cv2.IMREAD_GRAYSCALE)/255)-mean[site]) / std[site]
     count_verification[site] += 1
