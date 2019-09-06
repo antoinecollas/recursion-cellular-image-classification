@@ -64,12 +64,13 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
             engine.state.metrics['accuracy'], trainer=trainer)
         val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
+    @trainer.on(Events.STARTED)
     @trainer.on(Events.EPOCH_COMPLETED)
     def compute_and_display_val_metrics(engine):
         epoch = engine.state.epoch
         metrics = val_evaluator.run(val_loader).metrics
-        
-        if (epoch == 1) or (metrics['accuracy'] > engine.state.best_acc):
+
+        if (epoch == 0) or (metrics['accuracy'] > engine.state.best_acc):
             engine.state.best_acc = metrics['accuracy']
             print(f'New best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
             if not os.path.exists('models/'):
@@ -91,6 +92,8 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     tb_logger = TensorboardLogger('board/'+experiment_id)
     tb_logger.attach(trainer, log_handler=OutputHandler(tag='training', \
         output_transform=lambda loss: {'loss': loss}), event_name=Events.ITERATION_COMPLETED)
+    tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
+        metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.STARTED)
     tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
         metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
     tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), \
