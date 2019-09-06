@@ -104,12 +104,12 @@ class ImagesDS(torch.utils.data.Dataset):
         temp = list()
         for img in img_site_1:
             temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
-        img_site_1 = np.moveaxis(np.stack(temp), 0, 2)
+        img_site_1 = np.moveaxis(np.stack(temp), 0, 2)/255
 
         temp = list()
         for img in img_site_2:
             temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
-        img_site_2 = np.moveaxis(np.stack(temp), 0, 2)
+        img_site_2 = np.moveaxis(np.stack(temp), 0, 2)/255
 
         img_site_1 = self._transform(img_site_1)
         img_site_2 = self._transform(img_site_2)
