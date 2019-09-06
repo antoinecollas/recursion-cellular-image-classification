@@ -135,7 +135,7 @@ if training:
             ds_val_cell = ImagesDS(df=df_val_cell, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
 
             model_cell = deepcopy(model)
-            model.module.pretrained = False
+            model_cell.module.pretrained = False
             optimizer = torch.optim.SGD(model_cell.parameters(), lr=HYPERPARAMS['lr'], \
                 momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
                 weight_decay=HYPERPARAMS['weight_decay'])
