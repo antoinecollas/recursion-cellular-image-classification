@@ -40,7 +40,7 @@ if experiment_id is None:
     experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
 HYPERPARAMS = {
-    'train_split_by_experiment': False if (debug and not torch.cuda.is_available()) else True,
+    'train_split_by_experiment': False,
     'pretrained': False if (debug and not torch.cuda.is_available()) else True,
     'nb_epochs': 100,
     'scheduler': True,
