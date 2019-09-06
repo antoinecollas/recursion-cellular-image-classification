@@ -39,12 +39,13 @@ training = args.train
 if experiment_id is None:
     experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
+local = (debug and not torch.cuda.is_available())
 HYPERPARAMS = {
-    'train_split_by_experiment': False,
-    'pretrained': False if (debug and not torch.cuda.is_available()) else True,
-    'nb_epochs': 100,
+    'train_split_by_experiment': False if local else True,
+    'pretrained': False if local else True,
+    'nb_epochs': 10 if local else 100,
     'scheduler': True,
-    'bs': 2 if (debug and not torch.cuda.is_available()) else 24,
+    'bs': 2 if local else 24,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
@@ -56,7 +57,7 @@ HYPERPARAMS = {
         'm': 0.5
     },
     }
-HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
+HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs'] if debug else None
 
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
