@@ -14,10 +14,15 @@ from albumentations.core.composition import Compose
 from albumentations.augmentations.transforms import Normalize, RandomCrop, ShiftScaleRotate, CenterCrop
 
 class ImagesDS(torch.utils.data.Dataset):
-    def __init__(self, df, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
+    def __init__(self, df, df_controls, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
-        self.channels = channels
+        df_controls = deepcopy(df_controls)
+        mask = (df_controls['well_type']=='negative_control') & (df_controls['well']=='B02')
+        df_controls = df_controls[mask]
+        self.records_controls = df_controls.to_records(index=False)
         self.mode = mode
+        self.num_workers = num_workers
+        self.channels = channels
         self.img_dir = img_dir
         self.len = df.shape[0]
         mean = (0.02290913, 0.06102184, 0.03960226, 0.03904865, 0.02184808, 0.03553102)
@@ -39,40 +44,21 @@ class ImagesDS(torch.utils.data.Dataset):
             ], p=1.0)
 
         print('Loading images...')
-        imgs = list()
-        if num_workers < 1:
-            num_workers = 1
-        pool = multiprocessing.Pool(num_workers)
-        pbar = tqdm(total=len(self.records))
-        def update(*a):
-            pbar.update()
-        for i in range(pbar.total):
-            imgs.append(pool.apply_async(self._load_imgs, args=(i,), callback=update))
-        pool.close()
-        pool.join()
-        for i in range(len(imgs)):
-            imgs[i] = imgs[i].get()
+        self.imgs = self._load_imgs_parallel(self.records)
+        print('Loading controls...')
+        self.imgs_controls = self._load_imgs_parallel(self.records_controls)
 
-        self.imgs = dict()
-        for index in range(len(self.records)):
-            experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-            if not(experiment in self.imgs):
-                self.imgs[experiment] = dict()
-            if not(plate in self.imgs[experiment]):
-                self.imgs[experiment][plate] = dict()
-            self.imgs[experiment][plate][well] = imgs[index]
-
-    def _get_img_path(self, index, channel, site):
-            experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
+    def _get_img_path(self, records, index, channel, site):
+            experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
             if (self.mode == 'train') or (self.mode == 'val'):
                 mode = 'train'
             elif self.mode == 'test':
                 mode = 'test'
             return '/'.join([self.img_dir, mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
-    def _load_imgs(self, index):
-        paths_site_1 = [self._get_img_path(index, ch, site=1) for ch in self.channels]
-        paths_site_2 = [self._get_img_path(index, ch, site=2) for ch in self.channels]
+    def _load_imgs(self, records, index):
+        paths_site_1 = [self._get_img_path(records, index, ch, site=1) for ch in self.channels]
+        paths_site_2 = [self._get_img_path(records, index, ch, site=2) for ch in self.channels]
         
         img_site_1, img_site_2 = list(), list()
         for img_path in paths_site_1:
@@ -85,12 +71,36 @@ class ImagesDS(torch.utils.data.Dataset):
  
         return [img_site_1, img_site_2]
 
+    def _load_imgs_parallel(self, records):
+        if self.num_workers < 1:
+            self.num_workers = 1
+        pool = multiprocessing.Pool(self.num_workers)
+        pbar = tqdm(total=len(records))
+        def update(*a):
+            pbar.update()
+        imgs = [pool.apply_async(self._load_imgs, args=(records,i,), callback=update) for i in range(pbar.total)]
+        pool.close()
+        pool.join()
+        temp = [imgs[i].get() for i in range(len(imgs))]
+
+        imgs_dict = dict()
+        for index in range(len(records)):
+            experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
+            if not(experiment in imgs_dict):
+                imgs_dict[experiment] = dict()
+            if not(plate in imgs_dict[experiment]):
+                imgs_dict[experiment][plate] = dict()
+            imgs_dict[experiment][plate][well] = temp[index]
+
+        return imgs_dict
+
     def _show_imgs(self, imgs):
         from matplotlib import pyplot as plt
         import rxrx.io as rio
         import cv2
         fig = plt.figure()
         for i, img in enumerate(imgs):
+            img = np.moveaxis(img, 0, 2)
             height, width, _ = img.shape
             img = cv2.resize(img, dsize=(512, 512), interpolation=cv2.INTER_CUBIC)
             img_rgb = np.array(rio.convert_tensor_to_rgb(img), dtype='uint8')
@@ -101,37 +111,38 @@ class ImagesDS(torch.utils.data.Dataset):
         plt.show()
 
     def _transform(self, img):
+        img = np.moveaxis(img, 0, 2)
         if self.mode == 'train':
-            img = self.transform_train(image=img)['image']    
+            img = self.transform_train(image=img)['image']
         elif self.mode == 'val':
-            img = self.transform_val(image=img)['image']    
+            img = self.transform_val(image=img)['image']
         elif self.mode == 'test':
-            img = self.transform_test(image=img)['image']    
+            img = self.transform_test(image=img)['image']
+        img = np.moveaxis(img, 2, 0)
         return img
+
+    def _load_from_buffer(self, img_buffer):
+        img = list()
+        for buffer in img_buffer:
+            img.append(cv2.imdecode(np.frombuffer(buffer, dtype=np.uint8), -1))
+        img = np.stack(img)
+        img_transformed = self._transform(img)
+
+        # self._show_imgs([img, img_transformed])
+
+        return img_transformed
 
     def __getitem__(self, index):
         experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
         img_site_1, img_site_2 = self.imgs[experiment][plate][well]
+        img_control_site_1, img_control_site_2 = self.imgs_controls[experiment][plate]['B02']
 
-        temp = list()
-        for img in img_site_1:
-            temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
-        img_site_1 = np.moveaxis(np.stack(temp), 0, 2)
+        img_site_1 = self._load_from_buffer(img_site_1)
+        img_site_2 = self._load_from_buffer(img_site_2)
+        img_control_site_1 = self._load_from_buffer(img_control_site_1)
+        img_control_site_2 = self._load_from_buffer(img_control_site_2)
 
-        temp = list()
-        for img in img_site_2:
-            temp.append(cv2.imdecode(np.frombuffer(img, dtype=np.uint8), -1))
-        img_site_2 = np.moveaxis(np.stack(temp), 0, 2)
-
-        img_site_1 = self._transform(img_site_1)
-        img_site_2 = self._transform(img_site_2)
-
-        # self._show_imgs([img_site_1])
-        # self._show_imgs([img_site_2])
-        
-        img_site_1 = np.moveaxis(img_site_1, 2, 0)
-        img_site_2 = np.moveaxis(img_site_2, 2, 0)
-        img = torch.Tensor(np.stack([img_site_1, img_site_2]))
+        img = torch.Tensor(np.stack([img_site_1, img_site_2, img_control_site_1, img_control_site_2]))
 
         if (self.mode == 'train') or (self.mode == 'val'):
             return img, int(self.records[index].sirna)

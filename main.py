@@ -43,7 +43,7 @@ HYPERPARAMS = {
     'pretrained': False if local else True,
     'nb_epochs': 10 if local else 100,
     'scheduler': True,
-    'bs': 2 if local else 24,
+    'bs': 2 if local else 12,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
@@ -102,14 +102,15 @@ if not os.path.exists(path_model_step_1):
     if HYPERPARAMS['nb_examples'] is not None:
         df_train = df_train[:HYPERPARAMS['nb_examples']]
         df_val = df_val[:HYPERPARAMS['nb_examples']]
+    df_controls = pd.read_csv(PATH_METADATA+'/train_controls.csv')
    
     print('Size training dataset: {}'.format(len(df_train)))
     print('Size validation dataset: {}'.format(len(df_val)))
 
     print('########## TRAINING STEP 1 ##########')
 
-    ds_train = ImagesDS(df=df_train, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
-    ds_val = ImagesDS(df=df_val, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
+    ds_train = ImagesDS(df=df_train, df_controls=df_controls, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
+    ds_val = ImagesDS(df=df_val, df_controls=df_controls, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
 
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
@@ -119,6 +120,7 @@ model.eval()
 print('\n\n########## TEST ##########')
 
 df_test = pd.read_csv(PATH_METADATA+'/test.csv')
+df_controls = pd.read_csv(PATH_METADATA+'/test_controls.csv')
 print('Size test dataset: {}'.format(len(df_test)))
 
 # We use the fact that some siRNA are always present on the plates.
@@ -142,7 +144,7 @@ experiments = df_test['experiment'].unique()
 assert len(experiment_types) == len(experiments)
 for i, experiment in enumerate(experiments):
     df_test_experiment = df_test[df_test['experiment']==experiment]
-    ds_test_experiment = ImagesDS(df=df_test_experiment, img_dir=PATH_DATA, mode='test', \
+    ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, img_dir=PATH_DATA, mode='test', \
         num_workers=num_workers)
 
     temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
