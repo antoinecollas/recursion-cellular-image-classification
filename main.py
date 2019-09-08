@@ -98,7 +98,7 @@ if not os.path.exists(path_model_step_1):
     if HYPERPARAMS['train_split_by_experiment']:
         df_train, df_val = train_test_split_by_experiment(df, random_state=42)
     else:
-        df_train, df_val = train_test_split(df, test_size=0.3, random_state=42)
+        df_train, df_val = train_test_split(df, test_size=0.1, random_state=42)
     if HYPERPARAMS['nb_examples'] is not None:
         df_train = df_train[:HYPERPARAMS['nb_examples']]
         df_val = df_val[:HYPERPARAMS['nb_examples']]
