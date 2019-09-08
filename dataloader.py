@@ -11,7 +11,7 @@ import cv2
 import torch
 
 from albumentations.core.composition import Compose
-from albumentations.augmentations.transforms import Normalize, RandomCrop, ShiftScaleRotate, CenterCrop
+from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop
 
 class ImagesDS(torch.utils.data.Dataset):
     def __init__(self, df, df_controls, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
@@ -28,19 +28,11 @@ class ImagesDS(torch.utils.data.Dataset):
         mean = (0.02290913, 0.06102184, 0.03960226, 0.03904865, 0.02184808, 0.03553102)
         std = (0.04808127, 0.06136712, 0.0375606, 0.04815974, 0.0472975, 0.03571597)
         self.transform_train = Compose([
-            Normalize(mean=mean, std=std, \
-                max_pixel_value=255.0, p=1.0),
             ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
             RandomCrop(height=364, width=364, p=1.0)
             ], p=1.0)
         self.transform_val = Compose([
-            Normalize(mean=mean, std=std, \
-                max_pixel_value=255.0, p=1.0),
             CenterCrop(height=364, width=364, p=1.0)
-            ], p=1.0)
-        self.transform_test = Compose([
-            Normalize(mean=mean, std=std, \
-                max_pixel_value=255.0, p=1.0),
             ], p=1.0)
 
         print('Loading images...')
@@ -116,8 +108,6 @@ class ImagesDS(torch.utils.data.Dataset):
             img = self.transform_train(image=img)['image']
         elif self.mode == 'val':
             img = self.transform_val(image=img)['image']
-        elif self.mode == 'test':
-            img = self.transform_test(image=img)['image']
         img = np.moveaxis(img, 2, 0)
         return img
 
@@ -142,7 +132,7 @@ class ImagesDS(torch.utils.data.Dataset):
         img_control_site_1 = self._load_from_buffer(img_control_site_1)
         img_control_site_2 = self._load_from_buffer(img_control_site_2)
 
-        img = torch.Tensor(np.stack([img_site_1, img_site_2, img_control_site_1, img_control_site_2]))
+        img = torch.Tensor(np.stack([img_site_1, img_site_2, img_control_site_1, img_control_site_2])) / 255.0
 
         if (self.mode == 'train') or (self.mode == 'val'):
             return img, int(self.records[index].sirna)
