@@ -25,8 +25,6 @@ class ImagesDS(torch.utils.data.Dataset):
         self.channels = channels
         self.img_dir = img_dir
         self.len = df.shape[0]
-        mean = (0.02290913, 0.06102184, 0.03960226, 0.03904865, 0.02184808, 0.03553102)
-        std = (0.04808127, 0.06136712, 0.0375606, 0.04815974, 0.0472975, 0.03571597)
         self.transform_train = Compose([
             ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
             RandomCrop(height=364, width=364, p=1.0)
