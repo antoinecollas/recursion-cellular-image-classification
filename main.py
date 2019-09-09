@@ -109,8 +109,8 @@ if not os.path.exists(path_model_step_1):
 
     print('########## TRAINING STEP 1 ##########')
 
-    ds_train = ImagesDS(df=df_train, df_controls=df_controls, img_dir=PATH_DATA, mode='train', num_workers=num_workers)
-    ds_val = ImagesDS(df=df_val, df_controls=df_controls, img_dir=PATH_DATA, mode='val', num_workers=num_workers)
+    ds_train = ImagesDS(df=df_train, df_controls=df_controls, img_dir=PATH_DATA, mode='train')
+    ds_val = ImagesDS(df=df_val, df_controls=df_controls, img_dir=PATH_DATA, mode='val')
 
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
@@ -144,8 +144,8 @@ experiments = df_test['experiment'].unique()
 assert len(experiment_types) == len(experiments)
 for i, experiment in enumerate(experiments):
     df_test_experiment = df_test[df_test['experiment']==experiment]
-    ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, img_dir=PATH_DATA, mode='test', \
-        num_workers=num_workers)
+    ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, img_dir=PATH_DATA, \
+        mode='test')
 
     temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
         experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)

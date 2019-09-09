@@ -14,14 +14,13 @@ from albumentations.core.composition import Compose
 from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop
 
 class ImagesDS(torch.utils.data.Dataset):
-    def __init__(self, df, df_controls, img_dir, mode, num_workers, channels=[1,2,3,4,5,6]):
+    def __init__(self, df, df_controls, img_dir, mode, channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
         df_controls = deepcopy(df_controls)
         mask = (df_controls['well_type']=='negative_control') & (df_controls['well']=='B02')
         df_controls = df_controls[mask]
         self.records_controls = df_controls.to_records(index=False)
         self.mode = mode
-        self.num_workers = num_workers
         self.channels = channels
         self.img_dir = img_dir
         self.len = df.shape[0]
@@ -34,9 +33,9 @@ class ImagesDS(torch.utils.data.Dataset):
             ], p=1.0)
 
         print('Loading images...')
-        self.imgs = self._load_imgs_parallel(self.records)
+        self.imgs = self._load_imgs(self.records)
         print('Loading controls...')
-        self.imgs_controls = self._load_imgs_parallel(self.records_controls)
+        self.imgs_controls = self._load_imgs(self.records_controls)
 
     def _get_img_path(self, records, index, channel, site):
             experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
@@ -46,32 +45,22 @@ class ImagesDS(torch.utils.data.Dataset):
                 mode = 'test'
             return '/'.join([self.img_dir, mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
-    def _load_imgs(self, records, index):
-        paths_site_1 = [self._get_img_path(records, index, ch, site=1) for ch in self.channels]
-        paths_site_2 = [self._get_img_path(records, index, ch, site=2) for ch in self.channels]
-        
-        img_site_1, img_site_2 = list(), list()
-        for img_path in paths_site_1:
-            with open(img_path,'rb') as f: 
-                img_site_1.append(f.read())
- 
-        for img_path in paths_site_2:
-            with open(img_path,'rb') as f: 
-                img_site_2.append(f.read())
- 
-        return [img_site_1, img_site_2]
-
-    def _load_imgs_parallel(self, records):
-        if self.num_workers < 1:
-            self.num_workers = 1
-        pool = multiprocessing.Pool(self.num_workers)
-        pbar = tqdm(total=len(records))
-        def update(*a):
-            pbar.update()
-        imgs = [pool.apply_async(self._load_imgs, args=(records,i,), callback=update) for i in range(pbar.total)]
-        pool.close()
-        pool.join()
-        temp = [imgs[i].get() for i in range(len(imgs))]
+    def _load_imgs(self, records):
+        imgs = list()
+        for index in tqdm(range(len(records))):
+            paths_site_1 = [self._get_img_path(records, index, ch, site=1) for ch in self.channels]
+            paths_site_2 = [self._get_img_path(records, index, ch, site=2) for ch in self.channels]
+            
+            img_site_1, img_site_2 = list(), list()
+            for img_path in paths_site_1:
+                with open(img_path,'rb') as f: 
+                    img_site_1.append(f.read())
+    
+            for img_path in paths_site_2:
+                with open(img_path,'rb') as f: 
+                    img_site_2.append(f.read())
+    
+            imgs.append([img_site_1, img_site_2])
 
         imgs_dict = dict()
         for index in range(len(records)):
@@ -80,7 +69,7 @@ class ImagesDS(torch.utils.data.Dataset):
                 imgs_dict[experiment] = dict()
             if not(plate in imgs_dict[experiment]):
                 imgs_dict[experiment][plate] = dict()
-            imgs_dict[experiment][plate][well] = temp[index]
+            imgs_dict[experiment][plate][well] = imgs[index]
 
         return imgs_dict
 
