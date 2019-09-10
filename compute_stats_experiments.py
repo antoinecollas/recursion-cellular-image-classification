@@ -9,7 +9,7 @@ def compute_mean_std(paths, mean=None, std=None):
     count = np.zeros(nb_channels)
     sum_x = np.zeros(nb_channels)
     sum_x2 = np.zeros(nb_channels)
-    for path in tqdm(paths[:100], desc='Imgs'):
+    for path in tqdm(paths, desc='Imgs'):
         channel = int(path.split('_')[2][1])-1
         im = cv2.imread(path, cv2.IMREAD_GRAYSCALE)/255
         if (mean is not None) and (std is not None):
