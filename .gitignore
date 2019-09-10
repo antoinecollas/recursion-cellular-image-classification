@@ -4,6 +4,7 @@ examples/*
 models/
 submission*.csv
 *.prof
+*.pickle
 
 .DS_STORE
 .vscode/
