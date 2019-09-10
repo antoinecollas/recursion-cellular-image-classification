@@ -3,6 +3,7 @@ import datetime
 import argparse
 from copy import deepcopy
 import sys
+import pickle
 
 import pandas as pd
 import numpy as np
@@ -82,6 +83,9 @@ print('Number of GPUs used:', torch.cuda.device_count())
 def get_celltype(experiment):
     return experiment.split('-')[0]
 
+with open('stats_experiments.pickle', 'rb') as f:
+    stats_experiments = pickle.load(f)
+
 nb_classes = 1108
 model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
 optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
@@ -109,8 +113,8 @@ if not os.path.exists(path_model_step_1):
 
     print('########## TRAINING STEP 1 ##########')
 
-    ds_train = ImagesDS(df=df_train, df_controls=df_controls, img_dir=PATH_DATA, mode='train')
-    ds_val = ImagesDS(df=df_val, df_controls=df_controls, img_dir=PATH_DATA, mode='val')
+    ds_train = ImagesDS(df=df_train, df_controls=df_controls, stats_experiments=stats_experiments, img_dir=PATH_DATA, mode='train')
+    ds_val = ImagesDS(df=df_val, df_controls=df_controls, stats_experiments=stats_experiments, img_dir=PATH_DATA, mode='val')
 
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
@@ -144,8 +148,8 @@ experiments = df_test['experiment'].unique()
 assert len(experiment_types) == len(experiments)
 for i, experiment in enumerate(experiments):
     df_test_experiment = df_test[df_test['experiment']==experiment]
-    ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, img_dir=PATH_DATA, \
-        mode='test')
+    ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, stats_experiments=stats_experiments, \
+        img_dir=PATH_DATA, mode='test')
 
     temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
         experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)

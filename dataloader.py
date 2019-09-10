@@ -14,12 +14,13 @@ from albumentations.core.composition import Compose
 from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop
 
 class ImagesDS(torch.utils.data.Dataset):
-    def __init__(self, df, df_controls, img_dir, mode, channels=[1,2,3,4,5,6]):
+    def __init__(self, df, df_controls, stats_experiments, img_dir, mode, channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
         df_controls = deepcopy(df_controls)
         mask = (df_controls['well_type']=='negative_control') & (df_controls['well']=='B02')
         df_controls = df_controls[mask]
         self.records_controls = df_controls.to_records(index=False)
+        self.stats_experiments = stats_experiments
         self.mode = mode
         self.channels = channels
         self.img_dir = img_dir
@@ -89,7 +90,10 @@ class ImagesDS(torch.utils.data.Dataset):
             plt.imshow(img_rgb)
         plt.show()
 
-    def _transform(self, img):
+    def _transform(self, img, mean, std):
+        img = img / 255.0
+        for i in range(img.shape[0]):
+            img[i] = (img[i] - mean[i]) / std[i]
         img = np.moveaxis(img, 0, 2)
         if self.mode == 'train':
             img = self.transform_train(image=img)['image']
@@ -103,23 +107,27 @@ class ImagesDS(torch.utils.data.Dataset):
         for buffer in img_buffer:
             img.append(cv2.imdecode(np.frombuffer(buffer, dtype=np.uint8), -1))
         img = np.stack(img)
-        img_transformed = self._transform(img)
-
-        # self._show_imgs([img, img_transformed])
-
-        return img_transformed
+        return img
 
     def __getitem__(self, index):
         experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
         img_site_1, img_site_2 = self.imgs[experiment][plate][well]
+        mean = self.stats_experiments[experiment]['mean']
+        std = self.stats_experiments[experiment]['std']
         img_control_site_1, img_control_site_2 = self.imgs_controls[experiment][plate]['B02']
 
         img_site_1 = self._load_from_buffer(img_site_1)
+        img_site_1 = self._transform(img_site_1, mean=mean, std=std)
         img_site_2 = self._load_from_buffer(img_site_2)
+        img_site_2 = self._transform(img_site_2, mean=mean, std=std)
         img_control_site_1 = self._load_from_buffer(img_control_site_1)
+        img_control_site_1 = self._transform(img_control_site_1, mean=mean, std=std)
         img_control_site_2 = self._load_from_buffer(img_control_site_2)
+        img_control_site_2 = self._transform(img_control_site_2, mean=mean, std=std)
 
-        img = torch.Tensor(np.stack([img_site_1, img_site_2, img_control_site_1, img_control_site_2])) / 255.0
+        # self._show_imgs([img, img_transformed])
+
+        img = torch.Tensor(np.stack([img_site_1, img_site_2, img_control_site_1, img_control_site_2]))
 
         if (self.mode == 'train') or (self.mode == 'val'):
             return img, int(self.records[index].sirna)
