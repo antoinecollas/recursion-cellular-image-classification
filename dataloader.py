@@ -12,7 +12,7 @@ import cv2
 import torch
 
 from albumentations.core.composition import Compose
-from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop
+from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop, VerticalFlip, HorizontalFlip, Normalize
 
 class ImagesDS(torch.utils.data.Dataset):
     def __init__(self, df, df_controls, stats_experiments, img_dir, mode, channels=[1,2,3,4,5,6]):
@@ -32,6 +32,8 @@ class ImagesDS(torch.utils.data.Dataset):
         self.img_dir = img_dir
         self.len = df.shape[0]
         self.transform_train = Compose([
+            VerticalFlip(p=0.5),
+            HorizontalFlip(p=0.5),
             ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
             RandomCrop(height=364, width=364, p=1.0)
             ], p=1.0)
@@ -97,14 +99,15 @@ class ImagesDS(torch.utils.data.Dataset):
         plt.show()
 
     def _transform(self, img, mean, std):
-        img = img / 255.0
-        for i in range(img.shape[0]):
-            img[i] = (img[i] - mean[i]) / std[i]
         img = np.moveaxis(img, 0, 2)
         if self.mode == 'train':
             img = self.transform_train(image=img)['image']
         elif self.mode == 'val':
             img = self.transform_val(image=img)['image']
+        normalize = Compose([
+            Normalize(mean=mean, std=std, max_pixel_value=255.0, p=1.0)
+            ], p=1.0)
+        img = normalize(image=img)['image']
         img = np.moveaxis(img, 2, 0)
         return img
 
