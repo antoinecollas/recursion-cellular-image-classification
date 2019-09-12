@@ -44,7 +44,7 @@ HYPERPARAMS = {
     'pretrained': False if local else True,
     'nb_epochs': 10 if local else 100,
     'scheduler': True,
-    'bs': 2 if local else 12,
+    'bs': 2 if local else 16,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 3e-5,
@@ -56,7 +56,7 @@ HYPERPARAMS = {
         'm': 0.5
     },
     }
-HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs'] if debug else None
+HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
 
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
