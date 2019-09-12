@@ -4,6 +4,7 @@ from PIL import Image
 from tqdm import tqdm
 import multiprocessing
 import os
+import random
 
 import pandas as pd
 import numpy as np
@@ -16,10 +17,15 @@ from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate
 class ImagesDS(torch.utils.data.Dataset):
     def __init__(self, df, df_controls, stats_experiments, img_dir, mode, channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
+
         df_controls = deepcopy(df_controls)
         mask = (df_controls['well_type']=='negative_control') & (df_controls['well']=='B02')
-        df_controls = df_controls[mask]
-        self.records_controls = df_controls.to_records(index=False)
+        df_negative_controls = df_controls[mask]
+        self.records_negative_controls = df_negative_controls.to_records(index=False)
+        mask = (df_controls['well_type']=='positive_control')
+        df_positive_controls = df_controls[mask]
+        self.records_positive_controls = df_positive_controls.to_records(index=False)
+
         self.stats_experiments = stats_experiments
         self.mode = mode
         self.channels = channels
@@ -33,10 +39,10 @@ class ImagesDS(torch.utils.data.Dataset):
             CenterCrop(height=364, width=364, p=1.0)
             ], p=1.0)
 
-        print('Loading images...')
-        self.imgs = self._load_imgs(self.records)
-        print('Loading controls...')
-        self.imgs_controls = self._load_imgs(self.records_controls)
+        print()
+        self.imgs = self._load_imgs(self.records, desc='Images')
+        self.imgs_negative_controls = self._load_imgs(self.records_negative_controls, desc='Negative controls')
+        self.imgs_positive_controls = self._load_imgs(self.records_positive_controls, desc='Positive controls')
 
     def _get_img_path(self, records, index, channel, site):
             experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
@@ -46,9 +52,9 @@ class ImagesDS(torch.utils.data.Dataset):
                 mode = 'test'
             return '/'.join([self.img_dir, mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
-    def _load_imgs(self, records):
+    def _load_imgs(self, records, desc):
         imgs = list()
-        for index in tqdm(range(len(records))):
+        for index in tqdm(range(len(records)), desc=desc):
             paths_site_1 = [self._get_img_path(records, index, ch, site=1) for ch in self.channels]
             paths_site_2 = [self._get_img_path(records, index, ch, site=2) for ch in self.channels]
             
@@ -111,28 +117,64 @@ class ImagesDS(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-        img_site_1, img_site_2 = self.imgs[experiment][plate][well]
         mean = self.stats_experiments[experiment]['mean']
         std = self.stats_experiments[experiment]['std']
-        img_control_site_1, img_control_site_2 = self.imgs_controls[experiment][plate]['B02']
-
-        img_site_1 = self._load_from_buffer(img_site_1)
-        img_site_1 = self._transform(img_site_1, mean=mean, std=std)
-        img_site_2 = self._load_from_buffer(img_site_2)
-        img_site_2 = self._transform(img_site_2, mean=mean, std=std)
-        img_control_site_1 = self._load_from_buffer(img_control_site_1)
-        img_control_site_1 = self._transform(img_control_site_1, mean=mean, std=std)
-        img_control_site_2 = self._load_from_buffer(img_control_site_2)
-        img_control_site_2 = self._transform(img_control_site_2, mean=mean, std=std)
-
-        # self._show_imgs([img, img_transformed])
-
-        img = torch.Tensor(np.stack([img_site_1, img_site_2, img_control_site_1, img_control_site_2]))
 
         if (self.mode == 'train') or (self.mode == 'val'):
+            site = random.randint(0, 1)
+            temp = self.imgs[experiment][plate][well]
+            img = temp[site]
+            img = self._load_from_buffer(img)
+            img = self._transform(img, mean=mean, std=std)
+
+            site = random.randint(0, 1)
+            temp = self.imgs_negative_controls[experiment][plate]['B02']
+            img_negative_control = temp[site]
+            img_negative_control = self._load_from_buffer(img_negative_control)
+            img_negative_control = self._transform(img_negative_control, mean=mean, std=std)
+
+            wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
+            well_positive_control = random.sample(wells_positive_control, 1)[0]
+            site = random.randint(0, 1)
+            temp = self.imgs_positive_controls[experiment][plate][well_positive_control]
+            img_positive_control = temp[site]
+            img_positive_control = self._load_from_buffer(img_positive_control)
+            img_positive_control = self._transform(img_positive_control, mean=mean, std=std)
+
+            # self._show_imgs([img, img_transformed])
+
+            img = torch.Tensor(np.stack([img, img_negative_control, img_positive_control]))
+
             return img, int(self.records[index].sirna)
+
         elif (self.mode == 'test'):
-            return img, self.records[index].id_code
+            imgs = self.imgs[experiment][plate][well]
+            for i in range(len(imgs)):
+                imgs[i] = self._load_from_buffer(imgs[i])
+                imgs[i] = self._transform(imgs[i], mean=mean, std=std)
+
+            imgs_negative_control = deepcopy(self.imgs_negative_controls[experiment][plate]['B02'])
+            for i in range(len(imgs_negative_control)):
+                imgs_negative_control[i] = self._load_from_buffer(imgs_negative_control[i])
+                imgs_negative_control[i] = self._transform(imgs_negative_control[i], mean=mean, std=std)
+
+            imgs_positive_control = list()
+            wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
+            for well_positive_control in wells_positive_control:
+                imgs_positive_control.append(\
+                    self.imgs_positive_controls[experiment][plate][well_positive_control][0])
+                imgs_positive_control.append(\
+                    self.imgs_positive_controls[experiment][plate][well_positive_control][1])
+            for i in range(len(imgs_positive_control)):
+                imgs_positive_control[i] = self._load_from_buffer(imgs_positive_control[i])
+                imgs_positive_control[i] = self._transform(imgs_positive_control[i], mean=mean, std=std)
+
+            imgs = np.array(imgs)
+            imgs_negative_control = np.array(imgs_negative_control)
+            imgs_positive_control = np.array(imgs_positive_control)
+            imgs = torch.Tensor(np.concatenate([imgs, imgs_negative_control, imgs_positive_control]))
+
+            return imgs, self.records[index].id_code
 
     def __len__(self):
         return self.len

@@ -14,7 +14,7 @@ class TwoSitesNN(nn.Module):
         with torch.no_grad():
             new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
         self.base_nn.conv1 = new_conv
-        num_ftrs_cnn = 2*self.base_nn.fc.in_features
+        num_ftrs_cnn = 3*self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
 
         self.loss = loss
@@ -39,26 +39,30 @@ class TwoSitesNN(nn.Module):
             self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
             nn.init.xavier_uniform_(self.weight)
 
-    def forward(self, x):
-        # x shape: [batch, site/control, channel, h, w]
-
-        site_1 = x[:, 0, :, :, :].squeeze(1)
-        size_site_1 = site_1.shape[0]
-        site_2 = x[:, 1, :, :, :].squeeze(1)
-        size_site_2 = site_2.shape[0]
-        control_site_1 = x[:, 2, :, :, :].squeeze(1)
-        size_control_site_1 = control_site_1.shape[0]
-        control_site_2 = x[:, 3, :, :, :].squeeze(1)
-        size_control_site_2 = control_site_2.shape[0]
-        temp = torch.cat([site_1, site_2, control_site_1, control_site_2])
-        features = self.base_nn(temp)
-        features_site_1 = features[:size_site_1]
-        features_site_2 = features[size_site_1:size_site_1+size_site_2]
-        features_control_site_1 = features[size_site_1+size_site_2:size_site_1+size_site_2+size_control_site_1]
-        features_control_site_2 = features[size_site_1+size_site_2+size_control_site_1:]
-        features = (features_site_1+features_site_2)/2
-        features_control = (features_control_site_1+features_control_site_2)/2
-        features = torch.cat([features, features_control], dim=1)
+    def forward(self, x, test_mode=False):
+        # x shape: [batch, img/negative_control/positive_control, channel, h, w]
+        if test_mode:
+            bs = x.shape[0]
+            assert bs == 1
+            x = x.squeeze(0)
+            features_img = self.base_nn(x[:2])
+            features_negative_controls = self.base_nn(x[2:4])
+            features_positive_controls = self.base_nn(x[4:])
+            feature_img = features_img.mean(0, keepdim=True)
+            feature_negative_control = features_negative_controls.mean(0, keepdim=True)
+            feature_positive_control = features_positive_controls.mean(0, keepdim=True)
+            features = torch.cat([feature_img, feature_negative_control, feature_positive_control], dim=1)
+        else:
+            bs = x.shape[0]
+            img = x[:, 0, :, :, :].squeeze(1)
+            img_negative_control = x[:, 1, :, :, :].squeeze(1)
+            img_positive_control = x[:, 2, :, :, :].squeeze(1)
+            temp = torch.cat([img, img_negative_control, img_positive_control])
+            features = self.base_nn(temp)
+            features_img = features[:bs]
+            features_negative_control = features[bs:2*bs]
+            features_positive_control = features[2*bs:3*bs]
+            features = torch.cat([features_img, features_negative_control, features_positive_control], dim=1)
 
         if self.loss=='softmax':
             output = self.mlp(features)
