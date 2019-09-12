@@ -5,7 +5,7 @@ gcloud beta compute disks create $INSTANCE_NAME \
     --type=pd-ssd \
     --size=500GB \
     --zone=$ZONE \
-    --source-snapshot=recursion-cellular-image-classification-v5 \
+    --source-snapshot=recursion-cellular-image-classification-v6 \
     --physical-block-size=16384
 
 gcloud beta compute instances create $INSTANCE_NAME \
