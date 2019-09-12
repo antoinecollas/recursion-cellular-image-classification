@@ -133,7 +133,10 @@ df_test = pd.read_csv(PATH_METADATA+'/test.csv')
 df_controls = pd.read_csv(PATH_METADATA+'/test_controls.csv')
 print('Size test dataset: {}'.format(len(df_test)))
 
-HYPERPARAMS['bs'] = 1
+if device == 'cpu':
+    HYPERPARAMS['bs'] = 1
+else:
+    HYPERPARAMS['bs'] = torch.cuda.device_count()
 
 # We use the fact that some siRNA are always present on the plates.
 plate_groups = np.zeros((1108,4), int)
