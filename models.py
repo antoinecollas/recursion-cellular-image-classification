@@ -4,9 +4,9 @@ import torch.nn.functional as F
 
 from torchvision import models
 
-class TwoSitesNN(nn.Module):
+class CustomNN(nn.Module):
     def __init__(self, pretrained, nb_classes, loss, size_features=1024, dropout=0.3):
-        super(TwoSitesNN, self).__init__()
+        super(CustomNN, self).__init__()
 
         self.base_nn = models.resnet50(pretrained=pretrained)
         trained_kernel = self.base_nn.conv1.weight

@@ -13,7 +13,7 @@ import torch.backends.cudnn as cudnn
 
 from sklearn.model_selection import train_test_split
 from dataloader import train_test_split as train_test_split_by_experiment, ImagesDS
-from models import TwoSitesNN, DummyClassifier
+from models import CustomNN, DummyClassifier
 from loss import add_weight_decay
 
 from train import train
@@ -89,7 +89,7 @@ with open('stats_experiments.pickle', 'rb') as f:
     stats_experiments = pickle.load(f)
 
 nb_classes = 1108
-model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
+model = CustomNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
 parameters = add_weight_decay(model, HYPERPARAMS['weight_decay'])
 optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
