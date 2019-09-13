@@ -96,7 +96,7 @@ optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     weight_decay=0)
 model = torch.nn.DataParallel(model)
 
-path_model_step_1 = 'models/best_model_'+experiment_id+'.pth'
+path_model_step_1 = 'models/model_'+experiment_id+'.pth'
 if not os.path.exists(path_model_step_1):
     print('########## TRAINING ##########')
 

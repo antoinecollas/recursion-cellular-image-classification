@@ -75,12 +75,20 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
             print(f'New best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
             if not os.path.exists('models/'):
                 os.makedirs('models/')
-            torch.save(model.state_dict(), 'models/best_model_'+experiment_id+'.pth')
+            torch.save(model.state_dict(), 'models/model_'+experiment_id+'.pth')
 
         print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
             .format(engine.state.epoch, 
                         metrics['loss'], 
                         metrics['accuracy']))
+    
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def regular_saving_model(engine):
+        epoch = str(engine.state.epoch)
+        if (epoch%5) == 0:
+            if not os.path.exists('models/'):
+                os.makedirs('models/')
+            torch.save(model.state_dict(), 'models/model_'+experiment_id+'_epoch_'+epoch+'.pth')
 
     if hyperparams['scheduler']:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, hyperparams['nb_epochs'], \
