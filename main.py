@@ -42,6 +42,7 @@ if experiment_id is None:
 
 local = (debug and not torch.cuda.is_available())
 HYPERPARAMS = {
+    'validation': False,
     'train_split_by_experiment': False,
     'pretrained': False if local else True,
     'nb_epochs': 10 if local else 100,
@@ -51,6 +52,7 @@ HYPERPARAMS = {
     'nesterov': True,
     'weight_decay': 1e-4,
     'early_stopping': False,
+    'saving_frequence': 5,
     'patience': 10,
     'loss': loss,
     'arcface': {
@@ -58,7 +60,11 @@ HYPERPARAMS = {
         'm': 0.5
     },
     }
-HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
+HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs'] if debug else None
+
+if HYPERPARAMS['early_stopping'] and not HYPERPARAMS['validation']:
+    print('ERROR: early_stopping and no validation !')
+    sys.exit(1)
 
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
@@ -102,29 +108,36 @@ if not os.path.exists(path_model_step_1):
 
     df = pd.read_csv(PATH_METADATA+'/train.csv')
     df['celltype'] = df['experiment'].apply(get_celltype)
-    if HYPERPARAMS['train_split_by_experiment']:
-        df_train, df_val = train_test_split_by_experiment(df, random_state=42)
-    else:
-        if local:
-            stratify = None
+    if HYPERPARAMS['validation']:
+        if HYPERPARAMS['train_split_by_experiment']:
+            df_train, df_val = train_test_split_by_experiment(df, random_state=42)
         else:
-            print('Stratify train/val split by sirna...')
-            stratify = df[['sirna']]
-        df_train, df_val = train_test_split(df, test_size=0.1, random_state=42, stratify=stratify)
+            if local:
+                stratify = None
+            else:
+                print('Stratify train/val split by sirna...')
+                stratify = df[['sirna']]
+            df_train, df_val = train_test_split(df, test_size=0.1, random_state=42, stratify=stratify)
+    else:
+        df_train = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     if HYPERPARAMS['nb_examples'] is not None:
         df_train = df_train[:HYPERPARAMS['nb_examples']]
-        df_val = df_val[:HYPERPARAMS['nb_examples']]
+        if HYPERPARAMS['validation']:
+            df_val = df_val[:HYPERPARAMS['nb_examples']]
     df_controls = pd.read_csv(PATH_METADATA+'/train_controls.csv')
    
     print('Size training dataset: {}'.format(len(df_train)))
-    print('Size validation dataset: {}'.format(len(df_val)))
+    if HYPERPARAMS['validation']:
+        print('Size validation dataset: {}'.format(len(df_val)))
 
     print('########## TRAINING STEP 1 ##########')
 
     ds_train = ImagesDS(df=df_train, df_controls=df_controls, stats_experiments=stats_experiments, img_dir=PATH_DATA, mode='train')
-    ds_val = ImagesDS(df=df_val, df_controls=df_controls, stats_experiments=stats_experiments, img_dir=PATH_DATA, mode='val')
-
+    if HYPERPARAMS['validation']:
+        ds_val = ImagesDS(df=df_val, df_controls=df_controls, stats_experiments=stats_experiments, img_dir=PATH_DATA, mode='val')
+    else:
+        ds_val = None
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
 model.load_state_dict(torch.load(path_model_step_1))
