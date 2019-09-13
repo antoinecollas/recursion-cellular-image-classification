@@ -14,6 +14,7 @@ import torch.backends.cudnn as cudnn
 from sklearn.model_selection import train_test_split
 from dataloader import train_test_split as train_test_split_by_experiment, ImagesDS
 from models import TwoSitesNN, DummyClassifier
+from loss import add_weight_decay
 
 from train import train
 from test import test
@@ -89,9 +90,10 @@ with open('stats_experiments.pickle', 'rb') as f:
 
 nb_classes = 1108
 model = TwoSitesNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
-optimizer = torch.optim.SGD(model.parameters(), lr=HYPERPARAMS['lr'], \
+parameters = add_weight_decay(model, HYPERPARAMS['weight_decay'])
+optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
-    weight_decay=HYPERPARAMS['weight_decay'])
+    weight_decay=0)
 model = torch.nn.DataParallel(model)
 
 path_model_step_1 = 'models/best_model_'+experiment_id+'.pth'

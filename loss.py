@@ -2,9 +2,22 @@ import math
 import torch
 import torch.nn as nn
 
+def add_weight_decay(model, weight_decay):
+    decay = []
+    no_decay = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if ('bn' in name) or ('bias' in name):
+            no_decay.append(param)
+        else:
+            decay.append(param)
+    return [
+        {'params': no_decay, 'weight_decay': 0.},
+        {'params': decay, 'weight_decay': weight_decay}]
+
 class ArcFaceLoss():
     def __init__(self, s, m):
-        super().__init__()
         self.s = s
         self.m = m
         self.cos_m = math.cos(m)
