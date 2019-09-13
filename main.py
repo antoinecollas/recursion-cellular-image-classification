@@ -153,7 +153,8 @@ experiment_types = [3, 1, 0, 0, 0, 0, 2, 2, 3, 0, 0, 3, 1, 0, 0, 0, 2, 3]
 
 idx_experiment = 0
 experiments = df_test['experiment'].unique()
-assert len(experiment_types) == len(experiments)
+if not local:
+    assert len(experiment_types) == len(experiments)
 for i, experiment in enumerate(experiments):
     df_test_experiment = df_test[df_test['experiment']==experiment]
     ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, stats_experiments=stats_experiments, \
