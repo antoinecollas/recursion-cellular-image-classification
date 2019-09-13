@@ -50,7 +50,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                     for param in child.parameters():
                         param.requires_grad = True
 
-    pbar = ProgressBar(bar_format='')
+    pbar = ProgressBar(persist=True)
     pbar.attach(trainer, output_transform=lambda x: {'loss': x})
 
     metrics = {
