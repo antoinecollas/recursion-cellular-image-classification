@@ -60,7 +60,7 @@ HYPERPARAMS = {
         'm': 0.5
     },
     }
-HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs'] if debug else None
+HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
 
 if HYPERPARAMS['early_stopping'] and not HYPERPARAMS['validation']:
     print('ERROR: early_stopping and no validation !')
