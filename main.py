@@ -140,46 +140,47 @@ if not os.path.exists(path_model_step_1):
         ds_val = None
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
 
-model.load_state_dict(torch.load(path_model_step_1))
-model.eval()
+if HYPERPARAMS['validation']:
+    model.load_state_dict(torch.load(path_model_step_1))
+    model.eval()
 
-print('\n\n########## TEST ##########')
+    print('\n\n########## TEST ##########')
 
-df_test = pd.read_csv(PATH_METADATA+'/test.csv')
-df_controls = pd.read_csv(PATH_METADATA+'/test_controls.csv')
-print('Size test dataset: {}'.format(len(df_test)))
+    df_test = pd.read_csv(PATH_METADATA+'/test.csv')
+    df_controls = pd.read_csv(PATH_METADATA+'/test_controls.csv')
+    print('Size test dataset: {}'.format(len(df_test)))
 
-# We use the fact that some siRNA are always present on the plates.
-plate_groups = np.zeros((1108,4), int)
-if debug and (device=='cpu'):
-    df = pd.read_csv('data/full_metadata/train.csv')
-else:
-    df = pd.read_csv('data/metadata/train.csv')
-for sirna in range(nb_classes):
-    grp = df.loc[df.sirna==sirna,:].plate.value_counts().index.values
-    assert len(grp) == 3
-    plate_groups[sirna, 0:3] = grp
-    plate_groups[sirna, 3] = 10 - grp.sum()
-del df
-experiment_types = [3, 1, 0, 0, 0, 0, 2, 2, 3, 0, 0, 3, 1, 0, 0, 0, 2, 3]
-
-idx_experiment = 0
-experiments = df_test['experiment'].unique()
-if not local:
-    assert len(experiment_types) == len(experiments)
-for i, experiment in enumerate(tqdm(experiments)):
-    df_test_experiment = df_test[df_test['experiment']==experiment]
-    ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, stats_experiments=stats_experiments, \
-        img_dir=PATH_DATA, mode='test', verbose=False)
-
-    temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
-        experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)
-    if i==0:
-        preds = temp
+    # We use the fact that some siRNA are always present on the plates.
+    plate_groups = np.zeros((1108,4), int)
+    if debug and (device=='cpu'):
+        df = pd.read_csv('data/full_metadata/train.csv')
     else:
-        preds = np.concatenate([preds, temp], axis=0)
-    
-    idx_experiment += 1
+        df = pd.read_csv('data/metadata/train.csv')
+    for sirna in range(nb_classes):
+        grp = df.loc[df.sirna==sirna,:].plate.value_counts().index.values
+        assert len(grp) == 3
+        plate_groups[sirna, 0:3] = grp
+        plate_groups[sirna, 3] = 10 - grp.sum()
+    del df
+    experiment_types = [3, 1, 0, 0, 0, 0, 2, 2, 3, 0, 0, 3, 1, 0, 0, 0, 2, 3]
 
-df_test['sirna'] = preds.astype(int)
-df_test.to_csv('submission_' + experiment_id + '.csv', index=False, columns=['id_code','sirna'])
+    idx_experiment = 0
+    experiments = df_test['experiment'].unique()
+    if not local:
+        assert len(experiment_types) == len(experiments)
+    for i, experiment in enumerate(tqdm(experiments)):
+        df_test_experiment = df_test[df_test['experiment']==experiment]
+        ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, stats_experiments=stats_experiments, \
+            img_dir=PATH_DATA, mode='test', verbose=False)
+
+        temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
+            experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)
+        if i==0:
+            preds = temp
+        else:
+            preds = np.concatenate([preds, temp], axis=0)
+        
+        idx_experiment += 1
+
+    df_test['sirna'] = preds.astype(int)
+    df_test.to_csv('submission_' + experiment_id + '.csv', index=False, columns=['id_code','sirna'])
