@@ -4,6 +4,7 @@ import argparse
 from copy import deepcopy
 import sys
 import pickle
+from tqdm import tqdm
 
 import pandas as pd
 import numpy as np
@@ -133,8 +134,6 @@ df_test = pd.read_csv(PATH_METADATA+'/test.csv')
 df_controls = pd.read_csv(PATH_METADATA+'/test_controls.csv')
 print('Size test dataset: {}'.format(len(df_test)))
 
-HYPERPARAMS['bs'] = 1
-
 # We use the fact that some siRNA are always present on the plates.
 plate_groups = np.zeros((1108,4), int)
 if debug and (device=='cpu'):
@@ -148,17 +147,15 @@ for sirna in range(nb_classes):
     plate_groups[sirna, 3] = 10 - grp.sum()
 del df
 experiment_types = [3, 1, 0, 0, 0, 0, 2, 2, 3, 0, 0, 3, 1, 0, 0, 0, 2, 3]
-# [3 1 0 0 0 0 2 2 3 0 0 3 1 0 0 0 3 3]
-# [3 1 0 0 0 0 2 2 3 0 0 3 1 0 0 0 0 3]
 
 idx_experiment = 0
 experiments = df_test['experiment'].unique()
 if not local:
     assert len(experiment_types) == len(experiments)
-for i, experiment in enumerate(experiments):
+for i, experiment in enumerate(tqdm(experiments)):
     df_test_experiment = df_test[df_test['experiment']==experiment]
     ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, stats_experiments=stats_experiments, \
-        img_dir=PATH_DATA, mode='test')
+        img_dir=PATH_DATA, mode='test', verbose=False)
 
     temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
         experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)

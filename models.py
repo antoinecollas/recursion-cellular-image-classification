@@ -39,30 +39,17 @@ class TwoSitesNN(nn.Module):
             self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
             nn.init.xavier_uniform_(self.weight)
 
-    def forward(self, x, test_mode=False):
+    def forward(self, x):
         # x shape: [batch, img/negative_control/positive_control, channel, h, w]
-        if test_mode:
-            bs = x.shape[0]
-            assert bs == 1
-            x = x.squeeze(0)
-            features_img = self.base_nn(x[:2])
-            features_negative_controls = self.base_nn(x[2:4])
-            features_positive_controls = self.base_nn(x[4:])
-            feature_img = features_img.mean(0, keepdim=True)
-            feature_negative_control = features_negative_controls.mean(0, keepdim=True)
-            feature_positive_control = features_positive_controls.mean(0, keepdim=True)
-            features = torch.cat([feature_img, feature_negative_control, feature_positive_control], dim=1)
-        else:
-            bs = x.shape[0]
-            img = x[:, 0, :, :, :].squeeze(1)
-            img_negative_control = x[:, 1, :, :, :].squeeze(1)
-            img_positive_control = x[:, 2, :, :, :].squeeze(1)
-            temp = torch.cat([img, img_negative_control, img_positive_control])
-            features = self.base_nn(temp)
-            features_img = features[:bs]
-            features_negative_control = features[bs:2*bs]
-            features_positive_control = features[2*bs:3*bs]
-            features = torch.cat([features_img, features_negative_control, features_positive_control], dim=1)
+        bs = x.shape[0]
+        x = x.reshape([-1, x.shape[2], x.shape[3], x.shape[4]])
+        features = self.base_nn(x)
+        features = features.reshape([bs, -1, features.shape[1]])
+        shape = int(features.shape[1]/3)
+        features_imgs = features[:, 0:shape, :].mean(1)
+        features_negative_controls = features[:, shape:2*shape, :].mean(1)
+        features_positive_controls = features[:, 2*shape:, :].mean(1)
+        features = torch.cat([features_imgs, features_negative_controls, features_positive_controls], dim=1)
 
         if self.loss=='softmax':
             output = self.mlp(features)

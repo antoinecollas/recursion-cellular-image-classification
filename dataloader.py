@@ -15,7 +15,7 @@ from albumentations.core.composition import Compose
 from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop, VerticalFlip, HorizontalFlip, Normalize
 
 class ImagesDS(torch.utils.data.Dataset):
-    def __init__(self, df, df_controls, stats_experiments, img_dir, mode, channels=[1,2,3,4,5,6]):
+    def __init__(self, df, df_controls, stats_experiments, img_dir, mode, verbose=True, channels=[1,2,3,4,5,6]):
         self.records = deepcopy(df).to_records(index=False)
 
         df_controls = deepcopy(df_controls)
@@ -41,10 +41,13 @@ class ImagesDS(torch.utils.data.Dataset):
             CenterCrop(height=364, width=364, p=1.0)
             ], p=1.0)
 
-        print()
-        self.imgs = self._load_imgs(self.records, desc='Images')
-        self.imgs_negative_controls = self._load_imgs(self.records_negative_controls, desc='Negative controls')
-        self.imgs_positive_controls = self._load_imgs(self.records_positive_controls, desc='Positive controls')
+        if verbose:
+            print()
+        self.imgs = self._load_imgs(self.records, desc='Images', verbose=verbose)
+        self.imgs_negative_controls = self._load_imgs(self.records_negative_controls, \
+            desc='Negative controls', verbose=verbose)
+        self.imgs_positive_controls = self._load_imgs(self.records_positive_controls, \
+            desc='Positive controls', verbose=verbose)
 
     def _get_img_path(self, records, index, channel, site):
             experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
@@ -54,9 +57,13 @@ class ImagesDS(torch.utils.data.Dataset):
                 mode = 'test'
             return '/'.join([self.img_dir, mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
-    def _load_imgs(self, records, desc):
+    def _load_imgs(self, records, desc, verbose):
         imgs = list()
-        for index in tqdm(range(len(records)), desc=desc):
+        if verbose:
+            iterator = tqdm(range(len(records)), desc=desc)
+        else:
+            iterator = range(len(records))
+        for index in iterator:
             paths_site_1 = [self._get_img_path(records, index, ch, site=1) for ch in self.channels]
             paths_site_2 = [self._get_img_path(records, index, ch, site=2) for ch in self.channels]
             
@@ -161,13 +168,9 @@ class ImagesDS(torch.utils.data.Dataset):
                 imgs_negative_control[i] = self._load_from_buffer(imgs_negative_control[i])
                 imgs_negative_control[i] = self._transform(imgs_negative_control[i], mean=mean, std=std)
 
-            imgs_positive_control = list()
             wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
-            for well_positive_control in wells_positive_control:
-                imgs_positive_control.append(\
-                    self.imgs_positive_controls[experiment][plate][well_positive_control][0])
-                imgs_positive_control.append(\
-                    self.imgs_positive_controls[experiment][plate][well_positive_control][1])
+            well_positive_control = random.sample(wells_positive_control, 1)[0]
+            imgs_positive_control = deepcopy(self.imgs_positive_controls[experiment][plate][well_positive_control])
             for i in range(len(imgs_positive_control)):
                 imgs_positive_control[i] = self._load_from_buffer(imgs_positive_control[i])
                 imgs_positive_control[i] = self._transform(imgs_positive_control[i], mean=mean, std=std)

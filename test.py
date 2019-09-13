@@ -12,7 +12,7 @@ def test(df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers
     with torch.no_grad():
         for i, (x, _) in enumerate(tqdm(test_loader)):
             x = x.to(device)
-            output = model(x=x, test_mode=True)
+            output = model(x)
             output = F.softmax(output, 1)
             output = output.cpu().numpy()
             if i==0:
