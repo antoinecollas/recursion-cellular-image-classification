@@ -49,7 +49,7 @@ HYPERPARAMS = {
     'bs': 2 if local else 16,
     'momentum': 0.9,
     'nesterov': True,
-    'weight_decay': 3e-5,
+    'weight_decay': 1e-4,
     'early_stopping': False,
     'patience': 10,
     'loss': loss,
