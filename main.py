@@ -139,8 +139,7 @@ if not os.path.exists(path_model_step_1):
     else:
         ds_val = None
     train(experiment_id, ds_train, ds_val, model, optimizer, HYPERPARAMS, num_workers, device, debug)
-
-if HYPERPARAMS['validation']:
+else:
     model.load_state_dict(torch.load(path_model_step_1))
     model.eval()
 
