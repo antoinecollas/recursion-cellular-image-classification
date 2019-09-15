@@ -15,7 +15,6 @@ def test(df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers
             output = model(x)
             output = F.softmax(output, 1)
             output = output.cpu().numpy()
-            output = torch.argmax(output, dim=1)
             if i==0:
                 preds = output
             else:
@@ -28,21 +27,21 @@ def test(df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers
         preds = preds / temp
         return preds
 
-    # assert len(preds) == len(df_test)
-    # mask = np.repeat(plate_groups[np.newaxis, :, experiment_type], len(preds), axis=0) != \
-    #        np.repeat(df_test.plate.values[:, np.newaxis], 1108, axis=1)
-    # preds[mask] = 0
-    # preds = rescale(preds)
+    assert len(preds) == len(df_test)
+    mask = np.repeat(plate_groups[np.newaxis, :, experiment_type], len(preds), axis=0) != \
+           np.repeat(df_test.plate.values[:, np.newaxis], 1108, axis=1)
+    preds[mask] = 0
+    preds = rescale(preds)
 
-    # results = np.zeros(preds.shape[0])
-    # for i in range(preds.shape[0]):
-    #     max_per_row_idx = np.argmax(preds, axis=1)
-    #     max_row_idx = np.argmax(preds[np.arange(len(preds)), max_per_row_idx])
-    #     max_column_idx = max_per_row_idx[max_row_idx]
-    #     max_prob = preds[max_row_idx, max_column_idx]
-    #     results[max_row_idx] = max_column_idx
-    #     preds[:, max_column_idx] = 0
-    #     preds[max_row_idx, :] = 0
-    #     preds = rescale(preds)
+    results = np.zeros(preds.shape[0])
+    for i in range(preds.shape[0]):
+        max_per_row_idx = np.argmax(preds, axis=1)
+        max_row_idx = np.argmax(preds[np.arange(len(preds)), max_per_row_idx])
+        max_column_idx = max_per_row_idx[max_row_idx]
+        max_prob = preds[max_row_idx, max_column_idx]
+        results[max_row_idx] = max_column_idx
+        preds[:, max_column_idx] = 0
+        preds[max_row_idx, :] = 0
+        preds = rescale(preds)
 
-    return preds
+    return results
