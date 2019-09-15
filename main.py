@@ -151,7 +151,7 @@ else:
         df_test = df_test[:HYPERPARAMS['nb_examples']]
     print('Size test dataset: {}'.format(len(df_test)))
 
-    # We use the fact that some siRNA are always present on the plates.
+    # Plates leak.
     plate_groups = np.zeros((1108,4), int)
     if debug and (device=='cpu'):
         df = pd.read_csv('data/full_metadata/train.csv')
