@@ -94,8 +94,29 @@ def get_celltype(experiment):
 with open('stats_experiments.pickle', 'rb') as f:
     stats_experiments = pickle.load(f)
 
+# Plates leak.
 nb_classes = 1108
-model = CustomNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
+sirna_groups = np.zeros((1108,4), int)
+if debug and (device=='cpu'):
+    df = pd.read_csv('data/full_metadata/train.csv')
+else:
+    df = pd.read_csv('data/metadata/train.csv')
+
+for sirna in range(nb_classes):
+    grp = df.loc[df.sirna==sirna,:].plate.value_counts().index.values
+    assert len(grp) == 3
+    sirna_groups[sirna, 0:3] = grp
+    sirna_groups[sirna, 3] = 10 - grp.sum()
+del df
+
+plates_groups = [[], [], [], []]
+for sirna in range(nb_classes):
+    plates_groups[sirna_groups[sirna][0]-1].append(sirna)
+plates_groups = np.array(plates_groups)
+
+model = CustomNN(pretrained=HYPERPARAMS['pretrained'],
+    plates_groups=plates_groups,
+    loss=loss).to(device)
 parameters = add_weight_decay(model, HYPERPARAMS['weight_decay'])
 optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
@@ -152,17 +173,6 @@ else:
     print('Size test dataset: {}'.format(len(df_test)))
 
     # Plates leak.
-    plate_groups = np.zeros((1108,4), int)
-    if debug and (device=='cpu'):
-        df = pd.read_csv('data/full_metadata/train.csv')
-    else:
-        df = pd.read_csv('data/metadata/train.csv')
-    for sirna in range(nb_classes):
-        grp = df.loc[df.sirna==sirna,:].plate.value_counts().index.values
-        assert len(grp) == 3
-        plate_groups[sirna, 0:3] = grp
-        plate_groups[sirna, 3] = 10 - grp.sum()
-    del df
     experiment_types = [3, 1, 0, 0, 0, 0, 2, 2, 3, 0, 0, 3, 1, 0, 0, 0, 2, 3]
 
     idx_experiment = 0
@@ -174,7 +184,7 @@ else:
         ds_test_experiment = ImagesDS(df=df_test_experiment, df_controls=df_controls, stats_experiments=stats_experiments, \
             img_dir=PATH_DATA, mode='test', verbose=False)
 
-        temp = test(df_test_experiment, ds_test_experiment, plate_groups, \
+        temp = test(df_test_experiment, ds_test_experiment, sirna_groups, \
             experiment_types[idx_experiment], model, HYPERPARAMS['bs'], num_workers, device)
         if i==0:
             preds = temp

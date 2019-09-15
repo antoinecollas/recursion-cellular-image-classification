@@ -21,7 +21,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
             num_workers=num_workers)
 
     if hyperparams['loss']=='softmax':
-        criterion = nn.CrossEntropyLoss().to(device)
+        criterion = nn.NLLLoss().to(device)
     elif hyperparams['loss']=='arcface':
         criterion = ArcFaceLoss(s=hyperparams['arcface']['s'], m=hyperparams['arcface']['m']).to(device)
 
@@ -35,13 +35,13 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                 print()
                 temp = next(model.named_children())[1]
                 for name, child in temp.named_children():
-                    if (name=='mlp') or (name=='classifier'):
+                    if name=='base_nn':
+                        for param in child.parameters():
+                            param.requires_grad = False
+                    else:
                         print(name + ' is unfrozen')
                         for param in child.parameters():
                             param.requires_grad = True
-                    else:
-                        for param in child.parameters():
-                            param.requires_grad = False
 
             if epoch == 3:
                 print()
