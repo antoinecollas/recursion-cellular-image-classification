@@ -167,7 +167,7 @@ else:
 
     idx_experiment = 0
     experiments = df_test['experiment'].unique()
-    if not local:
+    if not debug:
         assert len(experiment_types) == len(experiments)
     for i, experiment in enumerate(tqdm(experiments)):
         df_test_experiment = df_test[df_test['experiment']==experiment]
