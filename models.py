@@ -12,11 +12,13 @@ from torchvision import models
 class CustomNN(nn.Module):
     def __init__(self, pretrained, plates_groups, loss, hidden_neurons=1024, dropout=0.3):
         super(CustomNN, self).__init__()
+
         nb_plates, nb_classes_per_plate = plates_groups.shape
         self.plates_groups = plates_groups.reshape(-1)
         self.permutation = np.zeros(len(self.plates_groups), dtype=np.int32)
         for i, sirna in enumerate(self.plates_groups):
             self.permutation[sirna] = i
+
         self.base_nn = models.resnet50(pretrained=pretrained)
         trained_kernel = self.base_nn.conv1.weight
         new_conv = nn.Conv2d(6, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -80,9 +82,9 @@ class CustomNN(nn.Module):
         output = self.logsoftmax(output)
         output = output.reshape(output.shape[0], -1)
 
-        output[:, self.permutation] = output
+        res = output[:, self.permutation]
 
-        return output
+        return res
 
 class DummyClassifier():
     def __init__(self, nb_classes):
