@@ -147,6 +147,8 @@ else:
 
     df_test = pd.read_csv(PATH_METADATA+'/test.csv')
     df_controls = pd.read_csv(PATH_METADATA+'/test_controls.csv')
+    if HYPERPARAMS['nb_examples'] is not None:
+        df_test = df_test[:HYPERPARAMS['nb_examples']]
     print('Size test dataset: {}'.format(len(df_test)))
 
     # We use the fact that some siRNA are always present on the plates.
