@@ -45,7 +45,7 @@ HYPERPARAMS = {
     'pretrained': False if local else True,
     'nb_epochs': 10 if local else 100,
     'scheduler': True,
-    'bs': 2 if local else 16,
+    'bs': 2 if local else 12,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 1e-4,
