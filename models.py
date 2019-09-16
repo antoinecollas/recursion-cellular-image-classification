@@ -12,8 +12,8 @@ from torchvision import models
 class MultiMLP(nn.Module):
     def __init__(self, nb_mlp, size_input, size_output, hidden_neurons, dropout):
         super(MultiMLP, self).__init__()
-        #TODO: add batchnorm
 
+        self.bn_0 = nn.ModuleList([nn.BatchNorm1d(size_input) for i in range(nb_mlp)])
         self.weight_fc0 = nn.Parameter(torch.FloatTensor(1, nb_mlp, hidden_neurons, size_input))
         init.kaiming_uniform_(self.weight_fc0, a=math.sqrt(5))
         self.bias_fc0 = nn.Parameter(torch.FloatTensor(1, nb_mlp, hidden_neurons, 1))
@@ -21,6 +21,7 @@ class MultiMLP(nn.Module):
         bound = 1 / math.sqrt(fan_in)
         init.uniform_(self.bias_fc0, -bound, bound)
 
+        self.bn_1 = nn.ModuleList([nn.BatchNorm1d(hidden_neurons) for i in range(nb_mlp)])
         self.weight_fc1 = nn.Parameter(torch.FloatTensor(1, nb_mlp, size_output, hidden_neurons))
         init.kaiming_uniform_(self.weight_fc1, a=math.sqrt(5))
         self.bias_fc1 = nn.Parameter(torch.FloatTensor(1, nb_mlp, size_output, 1))
@@ -32,14 +33,22 @@ class MultiMLP(nn.Module):
 
     def forward(self, x):
         features = x[:, None, :]
-        features = features.repeat(1, 4, 1)
+        output = features.repeat(1, 4, 1)
 
-        output = features[:, :, :, None]
+        temp = output.new_zeros(output.shape)
+        for i in range(len(self.bn_0)):
+            temp[:, i, :] = self.bn_0[i](output[:, i, :].squeeze(1))
+        output = temp
+        output = output[:, :, :, None]
         output = self.dropout(output)
         output = self.weight_fc0 @ output + self.bias_fc0
         output = F.relu(output)
         output = output.squeeze(3)
 
+        temp = output.new_zeros(output.shape)
+        for i in range(len(self.bn_1)):
+            temp[:, i, :] = self.bn_1[i](output[:, i, :].squeeze(1))
+        output = temp
         output = output[:, :, :, None]
         output = self.dropout(output)
         output = self.weight_fc1 @ output + self.bias_fc1
