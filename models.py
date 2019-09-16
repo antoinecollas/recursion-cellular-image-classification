@@ -9,6 +9,44 @@ import torch.nn.init as init
 
 from torchvision import models
 
+class MultiMLP(nn.Module):
+    def __init__(self, nb_mlp, size_input, size_output, hidden_neurons, dropout):
+        super(MultiMLP, self).__init__()
+        #TODO: add batchnorm
+
+        self.weight_fc0 = nn.Parameter(torch.FloatTensor(1, nb_mlp, hidden_neurons, size_input))
+        init.kaiming_uniform_(self.weight_fc0, a=math.sqrt(5))
+        self.bias_fc0 = nn.Parameter(torch.FloatTensor(1, nb_mlp, hidden_neurons, 1))
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight_fc0)
+        bound = 1 / math.sqrt(fan_in)
+        init.uniform_(self.bias_fc0, -bound, bound)
+
+        self.weight_fc1 = nn.Parameter(torch.FloatTensor(1, nb_mlp, size_output, hidden_neurons))
+        init.kaiming_uniform_(self.weight_fc1, a=math.sqrt(5))
+        self.bias_fc1 = nn.Parameter(torch.FloatTensor(1, nb_mlp, size_output, 1))
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.bias_fc1)
+        bound = 1 / math.sqrt(fan_in)
+        init.uniform_(self.bias_fc1, -bound, bound)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        features = x[:, None, :]
+        features = features.repeat(1, 4, 1)
+
+        output = features[:, :, :, None]
+        output = self.dropout(output)
+        output = self.weight_fc0 @ output + self.bias_fc0
+        output = F.relu(output)
+        output = output.squeeze(3)
+
+        output = output[:, :, :, None]
+        output = self.dropout(output)
+        output = self.weight_fc1 @ output + self.bias_fc1
+        output = output.squeeze(3)
+
+        return output
+
 class CustomNN(nn.Module):
     def __init__(self, pretrained, plates_groups, hidden_neurons=1024, dropout=0.3):
         super(CustomNN, self).__init__()
@@ -28,23 +66,8 @@ class CustomNN(nn.Module):
         num_ftrs_cnn = 3*self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
 
-        #TODO: add batchnorm
-
-        self.weight_fc0 = nn.Parameter(torch.FloatTensor(1, nb_plates, hidden_neurons, num_ftrs_cnn))
-        init.kaiming_uniform_(self.weight_fc0, a=math.sqrt(5))
-        self.bias_fc0 = nn.Parameter(torch.FloatTensor(1, nb_plates, hidden_neurons, 1))
-        fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight_fc0)
-        bound = 1 / math.sqrt(fan_in)
-        init.uniform_(self.bias_fc0, -bound, bound)
-
-        self.weight_fc1 = nn.Parameter(torch.FloatTensor(1, nb_plates, nb_classes_per_plate, hidden_neurons))
-        init.kaiming_uniform_(self.weight_fc1, a=math.sqrt(5))
-        self.bias_fc1 = nn.Parameter(torch.FloatTensor(1, nb_plates, nb_classes_per_plate, 1))
-        fan_in, _ = init._calculate_fan_in_and_fan_out(self.bias_fc1)
-        bound = 1 / math.sqrt(fan_in)
-        init.uniform_(self.bias_fc1, -bound, bound)
-
-        self.dropout = nn.Dropout(dropout)
+        self.multi_mlp = MultiMLP(nb_mlp=nb_plates, size_input=num_ftrs_cnn, \
+            size_output=nb_classes_per_plate, hidden_neurons=hidden_neurons, dropout=dropout)
 
         self.logsoftmax = nn.LogSoftmax(dim=2)
 
@@ -60,19 +83,7 @@ class CustomNN(nn.Module):
         features_positive_controls = features[:, 2*shape:, :].mean(1)
         features = torch.cat([features_imgs, features_negative_controls, features_positive_controls], dim=1)
 
-        features = features[:, None, :]
-        features = features.repeat(1, 4, 1)
-
-        output = features[:, :, :, None]
-        output = self.dropout(output)
-        output = self.weight_fc0 @ output + self.bias_fc0
-        output = F.relu(output)
-        output = output.squeeze(3)
-
-        output = output[:, :, :, None]
-        output = self.dropout(output)
-        output = self.weight_fc1 @ output + self.bias_fc1
-        output = output.squeeze(3)
+        output = self.multi_mlp(features)
 
         output = self.logsoftmax(output)
         output = output.reshape(output.shape[0], -1)

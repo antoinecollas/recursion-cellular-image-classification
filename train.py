@@ -31,12 +31,9 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                 temp = next(model.named_children())[1]
                 for name, child in temp.named_children():
                     if name=='base_nn':
+                        print(name + ' is frozen')
                         for param in child.parameters():
                             param.requires_grad = False
-                    else:
-                        print(name + ' is unfrozen')
-                        for param in child.parameters():
-                            param.requires_grad = True
 
             if epoch == 3:
                 print()
