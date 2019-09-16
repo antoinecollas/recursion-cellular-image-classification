@@ -28,19 +28,21 @@ parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--lr', type=float)
+parser.add_argument('--validation', default=False, action='store_true')
 
 args = parser.parse_args()
 
 debug = args.debug
 experiment_id = args.experiment_id
 lr = args.lr
+validation = args.validation
 
 if experiment_id is None:
     experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
 
 local = (debug and not torch.cuda.is_available())
 HYPERPARAMS = {
-    'validation': False,
+    'validation': validation,
     'train_split_by_experiment': False,
     'pretrained': False if local else True,
     'nb_epochs': 10 if local else 100,
