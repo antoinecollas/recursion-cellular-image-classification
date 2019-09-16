@@ -27,14 +27,12 @@ warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser(description='My parser')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
-parser.add_argument('--loss', choices=['softmax', 'arcface'], default='softmax')
 parser.add_argument('--lr', type=float)
 
 args = parser.parse_args()
 
 debug = args.debug
 experiment_id = args.experiment_id
-loss = args.loss
 lr = args.lr
 
 if experiment_id is None:
@@ -54,11 +52,6 @@ HYPERPARAMS = {
     'early_stopping': False,
     'saving_frequence': 5,
     'patience': 10,
-    'loss': loss,
-    'arcface': {
-        's': 30,
-        'm': 0.5
-    },
     }
 HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
 
@@ -115,8 +108,7 @@ for sirna in range(nb_classes):
 plates_groups = np.array(plates_groups)
 
 model = CustomNN(pretrained=HYPERPARAMS['pretrained'],
-    plates_groups=plates_groups,
-    loss=loss).to(device)
+    plates_groups=plates_groups).to(device)
 parameters = add_weight_decay(model, HYPERPARAMS['weight_decay'])
 optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \

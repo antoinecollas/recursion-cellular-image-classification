@@ -10,7 +10,7 @@ import torch.nn.init as init
 from torchvision import models
 
 class CustomNN(nn.Module):
-    def __init__(self, pretrained, plates_groups, loss, hidden_neurons=1024, dropout=0.3):
+    def __init__(self, pretrained, plates_groups, hidden_neurons=1024, dropout=0.3):
         super(CustomNN, self).__init__()
 
         nb_plates, nb_classes_per_plate = plates_groups.shape
@@ -28,30 +28,25 @@ class CustomNN(nn.Module):
         num_ftrs_cnn = 3*self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
 
-        if loss=='softmax':
-            #TODO: add batchnorm
+        #TODO: add batchnorm
 
-            self.weight_fc0 = nn.Parameter(torch.FloatTensor(1, nb_plates, hidden_neurons, num_ftrs_cnn))
-            init.kaiming_uniform_(self.weight_fc0, a=math.sqrt(5))
-            self.bias_fc0 = nn.Parameter(torch.FloatTensor(1, nb_plates, hidden_neurons, 1))
-            fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight_fc0)
-            bound = 1 / math.sqrt(fan_in)
-            init.uniform_(self.bias_fc0, -bound, bound)
+        self.weight_fc0 = nn.Parameter(torch.FloatTensor(1, nb_plates, hidden_neurons, num_ftrs_cnn))
+        init.kaiming_uniform_(self.weight_fc0, a=math.sqrt(5))
+        self.bias_fc0 = nn.Parameter(torch.FloatTensor(1, nb_plates, hidden_neurons, 1))
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight_fc0)
+        bound = 1 / math.sqrt(fan_in)
+        init.uniform_(self.bias_fc0, -bound, bound)
 
-            self.weight_fc1 = nn.Parameter(torch.FloatTensor(1, nb_plates, nb_classes_per_plate, hidden_neurons))
-            init.kaiming_uniform_(self.weight_fc1, a=math.sqrt(5))
-            self.bias_fc1 = nn.Parameter(torch.FloatTensor(1, nb_plates, nb_classes_per_plate, 1))
-            fan_in, _ = init._calculate_fan_in_and_fan_out(self.bias_fc1)
-            bound = 1 / math.sqrt(fan_in)
-            init.uniform_(self.bias_fc1, -bound, bound)
+        self.weight_fc1 = nn.Parameter(torch.FloatTensor(1, nb_plates, nb_classes_per_plate, hidden_neurons))
+        init.kaiming_uniform_(self.weight_fc1, a=math.sqrt(5))
+        self.bias_fc1 = nn.Parameter(torch.FloatTensor(1, nb_plates, nb_classes_per_plate, 1))
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.bias_fc1)
+        bound = 1 / math.sqrt(fan_in)
+        init.uniform_(self.bias_fc1, -bound, bound)
 
-            self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
 
-            self.logsoftmax = nn.LogSoftmax(dim=2)
-
-        elif loss=='arcface':
-            print('ERROR: Arface is no longer supported ...')
-            sys.exit(1)
+        self.logsoftmax = nn.LogSoftmax(dim=2)
 
     def forward(self, x):
         # x shape: [batch, img/negative_control/positive_control, channel, h, w]
