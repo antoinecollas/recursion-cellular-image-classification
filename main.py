@@ -29,6 +29,7 @@ parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--loss', choices=['softmax', 'arcface'], default='softmax')
 parser.add_argument('--lr', type=float)
+parser.add_argument('--validation', default=False, action='store_true')
 
 args = parser.parse_args()
 
@@ -42,7 +43,7 @@ if experiment_id is None:
 
 local = (debug and not torch.cuda.is_available())
 HYPERPARAMS = {
-    'validation': False,
+    'validation': args.validation,
     'train_split_by_experiment': False,
     'pretrained': False if local else True,
     'nb_epochs': 10 if local else 100,
