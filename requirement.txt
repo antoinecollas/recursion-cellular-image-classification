@@ -1,4 +1,5 @@
 albumentations==0.3.0
+efficientnet_pytorch==0.4.0
 Image==1.5.27
 git+https://github.com/pytorch/ignite.git
 ipywidgets==7.5.1
