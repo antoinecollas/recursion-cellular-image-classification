@@ -80,7 +80,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
                     os.makedirs('models/')
                 torch.save(model.state_dict(), 'models/model_'+experiment_id+'.pth')
 
-            print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
+            print('Validation Results - Epoch: {}  Average Loss: {:.4f}'
                 .format(engine.state.epoch, 
                             metrics['loss']))
 
