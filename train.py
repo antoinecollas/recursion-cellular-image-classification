@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from ignite.engine.engine import Engine
 from ignite.engine import Events, create_supervised_evaluator, create_supervised_trainer, _prepare_batch
-from ignite.metrics import Loss, Accuracy
+from ignite.metrics import Loss
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
@@ -47,7 +47,6 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
 
     metrics = {
         'loss': Loss(criterion),
-        'accuracy': Accuracy(),
     }
     train_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
     if hyperparams['validation']:
@@ -55,7 +54,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     
     if hyperparams['validation'] and hyperparams['early_stopping']:
         handler = EarlyStopping(patience=hyperparams['patience'], score_function=lambda engine: \
-            engine.state.metrics['accuracy'], trainer=trainer)
+            engine.state.metrics['loss'], trainer=trainer)
         val_evaluator.add_event_handler(Events.COMPLETED, handler)
 
     @trainer.on(Events.STARTED)
@@ -74,17 +73,16 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
         def compute_and_display_val_metrics_and_save_best_model(engine):
             epoch = engine.state.epoch
             metrics = val_evaluator.run(val_loader).metrics
-            if (epoch == 0) or (metrics['accuracy'] > engine.state.best_acc):
-                engine.state.best_acc = metrics['accuracy']
-                print(f'New best accuracy! Accuracy: {engine.state.best_acc}\nModel saved!')
+            if (epoch == 0) or (metrics['loss'] > engine.state.best_loss):
+                engine.state.best_loss = metrics['loss']
+                print(f'New best loss! Loss: {engine.state.best_loss}\nModel saved!')
                 if not os.path.exists('models/'):
                     os.makedirs('models/')
                 torch.save(model.state_dict(), 'models/model_'+experiment_id+'.pth')
 
             print('Validation Results - Epoch: {}  Average Loss: {:.4f} | Accuracy: {:.4f} '
                 .format(engine.state.epoch, 
-                            metrics['loss'], 
-                            metrics['accuracy']))
+                            metrics['loss']))
 
     if hyperparams['scheduler']:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, hyperparams['nb_epochs'], \
@@ -99,15 +97,15 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
         output_transform=lambda loss: {'loss_batch': loss}), event_name=Events.ITERATION_COMPLETED)
 
     tb_logger.attach(train_evaluator, log_handler=OutputHandler(tag='training', \
-        metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.STARTED)
+        metric_names=['loss'], another_engine=trainer), event_name=Events.STARTED)
     tb_logger.attach(train_evaluator, log_handler=OutputHandler(tag='training', \
-        metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
+        metric_names=['loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
 
     if hyperparams['validation']:
         tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
-            metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.STARTED)
+            metric_names=['loss'], another_engine=trainer), event_name=Events.STARTED)
         tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
-            metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
+            metric_names=['loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), \
         event_name=Events.ITERATION_STARTED)
