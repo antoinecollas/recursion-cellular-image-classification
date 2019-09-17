@@ -25,6 +25,7 @@ warnings.filterwarnings('ignore')
 # torch.manual_seed(0)
 
 parser = argparse.ArgumentParser(description='My parser')
+parser.add_argument('--backbone', choices=['resnet', 'efficientnet'], default='efficientnet')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--loss', choices=['softmax', 'arcface'], default='softmax')
@@ -33,22 +34,28 @@ parser.add_argument('--validation', default=False, action='store_true')
 
 args = parser.parse_args()
 
+backbone = args.backbone
 debug = args.debug
 experiment_id = args.experiment_id
 loss = args.loss
 lr = args.lr
 
 if experiment_id is None:
-    experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0]
+    experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0] + '_' + backbone
 
-local = (debug and not torch.cuda.is_available())
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+if device == 'cpu':
+    num_workers = 0
+else:
+    num_workers = 4*torch.cuda.device_count()
+    
 HYPERPARAMS = {
     'validation': args.validation,
     'train_split_by_experiment': False,
-    'pretrained': False if local else True,
-    'nb_epochs': 10 if local else 100,
+    'nb_epochs': 10 if (device == 'cpu') else 100,
     'scheduler': True,
-    'bs': 2 if local else 16,
+    'bs': 2 if (device == 'cpu') else 16,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 1e-4,
@@ -70,13 +77,6 @@ if HYPERPARAMS['early_stopping'] and not HYPERPARAMS['validation']:
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-if device == 'cpu':
-    num_workers = 0
-else:
-    num_workers = 4*torch.cuda.device_count()
-
 if torch.cuda.is_available():
     HYPERPARAMS['bs'] = HYPERPARAMS['bs']*torch.cuda.device_count()
     cudnn.benchmark = True
@@ -96,7 +96,7 @@ with open('stats_experiments.pickle', 'rb') as f:
     stats_experiments = pickle.load(f)
 
 nb_classes = 1108
-model = CustomNN(pretrained=HYPERPARAMS['pretrained'], nb_classes=nb_classes, loss=loss).to(device)
+model = CustomNN(backbone=backbone, nb_classes=nb_classes, loss=loss).to(device)
 parameters = add_weight_decay(model, HYPERPARAMS['weight_decay'])
 optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     momentum=HYPERPARAMS['momentum'], nesterov=HYPERPARAMS['nesterov'], \
@@ -113,7 +113,7 @@ if not os.path.exists(path_model_step_1):
         if HYPERPARAMS['train_split_by_experiment']:
             df_train, df_val = train_test_split_by_experiment(df, random_state=42)
         else:
-            if local:
+            if device == 'cpu':
                 stratify = None
             else:
                 print('Stratify train/val split by sirna...')

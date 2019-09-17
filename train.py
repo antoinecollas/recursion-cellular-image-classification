@@ -27,28 +27,26 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
 
-    if hyperparams['pretrained']:
-        @trainer.on(Events.EPOCH_STARTED)
-        def turn_on_layers(engine):
-            epoch = engine.state.epoch
-            if epoch == 1:
-                print()
-                temp = next(model.named_children())[1]
-                for name, child in temp.named_children():
-                    if (name=='mlp') or (name=='classifier'):
-                        print(name + ' is unfrozen')
-                        for param in child.parameters():
-                            param.requires_grad = True
-                    else:
-                        for param in child.parameters():
-                            param.requires_grad = False
-
-            if epoch == 3:
-                print()
-                print('Turn on all the layers')
-                for name, child in model.named_children():
+    @trainer.on(Events.EPOCH_STARTED)
+    def turn_on_layers(engine):
+        epoch = engine.state.epoch
+        print()
+        if epoch == 1:
+            temp = next(model.named_children())[1]
+            for name, child in temp.named_children():
+                if name == 'backbone':
+                    print(name + ' is frozen')
+                    for param in child.parameters():
+                        param.requires_grad = False
+                else:
                     for param in child.parameters():
                         param.requires_grad = True
+
+        if epoch == 3:
+            print('Turn on all the layers')
+            for name, child in model.named_children():
+                for param in child.parameters():
+                    param.requires_grad = True
 
     pbar = ProgressBar(persist=True)
     pbar.attach(trainer, output_transform=lambda x: {'loss': x})
