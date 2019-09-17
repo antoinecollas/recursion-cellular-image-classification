@@ -6,7 +6,7 @@ from torchvision import models
 from efficientnet_pytorch import EfficientNet
 
 class CustomNN(nn.Module):
-    def __init__(self, backbone, nb_classes, loss, size_features=1024, dropout=0.3):
+    def __init__(self, backbone, nb_classes, loss, hidden_neurons=2048, dropout=0.4):
         super(CustomNN, self).__init__()
 
         if backbone == 'resnet':
@@ -32,21 +32,21 @@ class CustomNN(nn.Module):
             self.mlp = nn.Sequential(
                     nn.BatchNorm1d(num_ftrs_cnn),
                     nn.Dropout(dropout),
-                    nn.Linear(num_ftrs_cnn, size_features),
+                    nn.Linear(num_ftrs_cnn, hidden_neurons),
                     nn.ReLU(),
-                    nn.BatchNorm1d(size_features),
+                    nn.BatchNorm1d(hidden_neurons),
                     nn.Dropout(dropout),
-                    nn.Linear(size_features, nb_classes)
+                    nn.Linear(hidden_neurons, nb_classes)
                     )
         elif self.loss=='arcface':
             self.mlp = nn.Sequential(
                     nn.BatchNorm1d(num_ftrs_cnn),
                     nn.Dropout(dropout),
-                    nn.Linear(num_ftrs_cnn, size_features),
+                    nn.Linear(num_ftrs_cnn, hidden_neurons),
                     nn.ReLU(),
-                    nn.BatchNorm1d(size_features)
+                    nn.BatchNorm1d(hidden_neurons)
                     )
-            self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
+            self.weight = nn.Parameter(torch.FloatTensor(nb_classes, hidden_neurons))
             nn.init.xavier_uniform_(self.weight)
 
     def forward(self, x):

@@ -52,7 +52,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     pbar.attach(trainer, output_transform=lambda x: {'loss': x})
 
     metrics = {
-        'loss_eval_mode': Loss(criterion),
+        'loss': Loss(criterion),
         'accuracy': Accuracy(),
     }
     train_evaluator = create_supervised_evaluator(model, metrics=metrics, device=device)
@@ -105,15 +105,15 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
         output_transform=lambda loss: {'loss_train_mode': loss}), event_name=Events.ITERATION_COMPLETED)
 
     tb_logger.attach(train_evaluator, log_handler=OutputHandler(tag='training', \
-        metric_names=['accuracy', 'loss_eval_mode'], another_engine=trainer), event_name=Events.STARTED)
+        metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.STARTED)
     tb_logger.attach(train_evaluator, log_handler=OutputHandler(tag='training', \
-        metric_names=['accuracy', 'loss_eval_mode'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
+        metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
 
     if hyperparams['validation']:
         tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
-            metric_names=['accuracy', 'loss_eval_mode'], another_engine=trainer), event_name=Events.STARTED)
+            metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.STARTED)
         tb_logger.attach(val_evaluator, log_handler=OutputHandler(tag='validation', \
-            metric_names=['accuracy', 'loss_eval_mode'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
+            metric_names=['accuracy', 'loss'], another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), \
         event_name=Events.ITERATION_STARTED)

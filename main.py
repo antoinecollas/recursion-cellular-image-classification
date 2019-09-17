@@ -55,7 +55,6 @@ HYPERPARAMS = {
     'train_split_by_experiment': False,
     'nb_epochs': 10 if (device == 'cpu') else 100,
     'scheduler': True,
-    'bs': 2 if (device == 'cpu') else 16,
     'momentum': 0.9,
     'nesterov': True,
     'weight_decay': 1e-4,
@@ -68,7 +67,30 @@ HYPERPARAMS = {
         'm': 0.5
     },
     }
-HYPERPARAMS['nb_examples'] = 10*HYPERPARAMS['bs'] if debug else None
+
+if device == 'cpu':
+    HYPERPARAMS['bs'] = 2
+elif backbone == 'resnet':
+    HYPERPARAMS['bs'] = 16
+elif backbone == 'efficientnet':
+    HYPERPARAMS['bs'] = 7
+
+if torch.cuda.is_available():
+    HYPERPARAMS['bs'] = HYPERPARAMS['bs'] * torch.cuda.device_count()
+    cudnn.benchmark = True
+
+if lr is None:
+    HYPERPARAMS['lr'] = 0.0005 * HYPERPARAMS['bs']
+else:
+    HYPERPARAMS['lr'] = lr
+
+if debug:
+    if device == 'cuda':
+        HYPERPARAMS['nb_examples'] = 10 * torch.cuda.device_count() * HYPERPARAMS['bs']
+    else:
+        HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs']
+else:
+    HYPERPARAMS['nb_examples'] = None
 
 if HYPERPARAMS['early_stopping'] and not HYPERPARAMS['validation']:
     print('ERROR: early_stopping and no validation !')
@@ -76,15 +98,6 @@ if HYPERPARAMS['early_stopping'] and not HYPERPARAMS['validation']:
 
 PATH_DATA = 'data'
 PATH_METADATA = os.path.join(PATH_DATA, 'metadata')
-
-if torch.cuda.is_available():
-    HYPERPARAMS['bs'] = HYPERPARAMS['bs']*torch.cuda.device_count()
-    cudnn.benchmark = True
-
-if lr is None:
-    HYPERPARAMS['lr'] = 0.0005 * HYPERPARAMS['bs']
-else:
-    HYPERPARAMS['lr'] = lr
 
 print('Number of workers used:', num_workers, '/', os.cpu_count())
 print('Number of GPUs used:', torch.cuda.device_count())
