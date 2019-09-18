@@ -105,7 +105,13 @@ class ImagesDS(torch.utils.data.Dataset):
             plt.imshow(img_rgb)
         plt.show()
 
-    def _transform(self, img, mean, std):
+    def _transform(self, img, experiment, plate, well, site):
+        if 'mean' in self.stats_experiments[experiment].keys():
+            mean = self.stats_experiments[experiment]['mean']
+            std = self.stats_experiments[experiment]['std']
+        else:
+            mean = self.stats_experiments[experiment][plate][well][site]['mean']
+            std = self.stats_experiments[experiment][plate][well][site]['std']
         img = np.moveaxis(img, 0, 2)
         if self.mode == 'train':
             img = self.transform_train(image=img)['image']
@@ -127,29 +133,24 @@ class ImagesDS(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-        mean = self.stats_experiments[experiment]['mean']
-        std = self.stats_experiments[experiment]['std']
 
         if (self.mode == 'train') or (self.mode == 'val'):
             site = random.randint(0, 1)
-            temp = self.imgs[experiment][plate][well]
-            img = temp[site]
+            img = self.imgs[experiment][plate][well][site]
             img = self._load_from_buffer(img)
-            img = self._transform(img, mean=mean, std=std)
+            img = self._transform(img, experiment, plate, well, site)
 
             site = random.randint(0, 1)
-            temp = self.imgs_negative_controls[experiment][plate]['B02']
-            img_negative_control = temp[site]
+            img_negative_control = self.imgs_negative_controls[experiment][plate]['B02'][site]
             img_negative_control = self._load_from_buffer(img_negative_control)
-            img_negative_control = self._transform(img_negative_control, mean=mean, std=std)
+            img_negative_control = self._transform(img_negative_control, experiment, plate, well, site)
 
             wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
             well_positive_control = random.sample(wells_positive_control, 1)[0]
             site = random.randint(0, 1)
-            temp = self.imgs_positive_controls[experiment][plate][well_positive_control]
-            img_positive_control = temp[site]
+            img_positive_control = self.imgs_positive_controls[experiment][plate][well_positive_control][site]
             img_positive_control = self._load_from_buffer(img_positive_control)
-            img_positive_control = self._transform(img_positive_control, mean=mean, std=std)
+            img_positive_control = self._transform(img_positive_control, experiment, plate, well, site)
 
             # self._show_imgs([img, img_transformed])
 
@@ -161,19 +162,19 @@ class ImagesDS(torch.utils.data.Dataset):
             imgs = self.imgs[experiment][plate][well]
             for i in range(len(imgs)):
                 imgs[i] = self._load_from_buffer(imgs[i])
-                imgs[i] = self._transform(imgs[i], mean=mean, std=std)
+                imgs[i] = self._transform(imgs[i], experiment, plate, well, site)
 
             imgs_negative_control = deepcopy(self.imgs_negative_controls[experiment][plate]['B02'])
             for i in range(len(imgs_negative_control)):
                 imgs_negative_control[i] = self._load_from_buffer(imgs_negative_control[i])
-                imgs_negative_control[i] = self._transform(imgs_negative_control[i], mean=mean, std=std)
+                imgs_negative_control[i] = self._transform(imgs_negative_control[i], experiment, plate, well, site)
 
             wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
             well_positive_control = random.sample(wells_positive_control, 1)[0]
             imgs_positive_control = deepcopy(self.imgs_positive_controls[experiment][plate][well_positive_control])
             for i in range(len(imgs_positive_control)):
                 imgs_positive_control[i] = self._load_from_buffer(imgs_positive_control[i])
-                imgs_positive_control[i] = self._transform(imgs_positive_control[i], mean=mean, std=std)
+                imgs_positive_control[i] = self._transform(imgs_positive_control[i], experiment, plate, well, site)
 
             imgs = np.array(imgs)
             imgs_negative_control = np.array(imgs_negative_control)
