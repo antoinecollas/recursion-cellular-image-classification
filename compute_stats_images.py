@@ -20,8 +20,8 @@ def get_info(path):
 
 FILENAME = 'stats_images.pickle'
 
-images_train = glob.glob('data/train/*/*/*', recursive=True)
-images_test = glob.glob('data/test/*/*/*', recursive=True)
+images_train = glob.glob('data/train/*/*/*.jpeg', recursive=True)
+images_test = glob.glob('data/test/*/*/*.jpeg', recursive=True)
 images = images_train + images_test
 
 stats_images = dict()
