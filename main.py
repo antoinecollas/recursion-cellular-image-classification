@@ -87,7 +87,7 @@ else:
 
 if debug:
     if device == 'cuda':
-        HYPERPARAMS['nb_examples'] = 10 * torch.cuda.device_count() * HYPERPARAMS['bs']
+        HYPERPARAMS['nb_examples'] = 10 * HYPERPARAMS['bs']
     else:
         HYPERPARAMS['nb_examples'] = HYPERPARAMS['bs']
 else:
