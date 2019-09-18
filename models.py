@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision import models
+import pretrainedmodels
 from efficientnet_pytorch import EfficientNet
 
 class CustomNN(nn.Module):
@@ -18,6 +19,16 @@ class CustomNN(nn.Module):
             self.backbone.conv1 = new_conv
             num_ftrs_cnn = 3*self.backbone.fc.in_features
             self.backbone.fc = nn.Identity()
+        elif backbone == 'se_resnext':
+            self.backbone = pretrainedmodels.__dict__['se_resnext50_32x4d'](num_classes=1000, pretrained='imagenet')
+            trained_kernel = self.backbone.layer0.conv1.weight
+            new_conv = nn.Conv2d(6, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            with torch.no_grad():
+                new_conv.weight[:,:] = torch.stack([torch.mean(trained_kernel, 1)]*6, dim=1)
+            self.backbone.layer0.conv1 = new_conv
+            num_ftrs_cnn = 3*self.backbone.last_linear.in_features
+            self.backbone.avg_pool = nn.AdaptiveAvgPool2d(output_size=(1,1))
+            self.backbone.last_linear = nn.Identity()
         elif backbone == 'efficientnet':
             self.backbone = EfficientNet.from_pretrained('efficientnet-b3')
             trained_kernel = self.backbone._conv_stem.weight
