@@ -25,7 +25,7 @@ warnings.filterwarnings('ignore')
 # torch.manual_seed(0)
 
 parser = argparse.ArgumentParser(description='My parser')
-parser.add_argument('--backbone', choices=['resnet', 'efficientnet'], default='efficientnet')
+parser.add_argument('--backbone', choices=['resnet', 'efficientnet'], default='resnet')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--loss', choices=['softmax', 'arcface'], default='softmax')
