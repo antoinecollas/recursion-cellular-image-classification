@@ -4,9 +4,13 @@ import numpy as np
 import cv2
 import pandas as pd
 
-def compute_mean_std(path):
+def compute_mean_std(path, eps=1e-6):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)/255
-    return np.mean(img), np.std(img)
+    mean = np.mean(img)
+    std = np.std(img)
+    if std < eps:
+        std = eps
+    return mean, std
 
 def get_info(path):
     temp = path.split('/')
