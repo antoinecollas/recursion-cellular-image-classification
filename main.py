@@ -71,8 +71,10 @@ HYPERPARAMS = {
 
 if device == 'cpu':
     HYPERPARAMS['bs'] = 2
-elif (backbone == 'resnet') or (backbone == 'se_resnext'):
+elif backbone == 'resnet':
     HYPERPARAMS['bs'] = 16
+elif backbone == 'se_resnext':
+    HYPERPARAMS['bs'] = 9
 elif backbone == 'efficientnet':
     HYPERPARAMS['bs'] = 7
 
