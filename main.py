@@ -54,7 +54,7 @@ HYPERPARAMS = {
     'validation': args.validation,
     'train_split_by_experiment': False,
     'normalize_experiments': False,
-    'nb_epochs': 10 if (device == 'cpu') else 100,
+    'nb_epochs': 10 if (device == 'cpu') else 200,
     'scheduler': True,
     'momentum': 0.9,
     'nesterov': True,
@@ -84,6 +84,8 @@ if torch.cuda.is_available():
 
 if lr is None:
     HYPERPARAMS['lr'] = 0.0005 * HYPERPARAMS['bs']
+    if backbone == 'se_resnext':
+        HYPERPARAMS['lr'] = 0.0001 * HYPERPARAMS['bs']
 else:
     HYPERPARAMS['lr'] = lr
 
