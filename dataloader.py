@@ -162,19 +162,19 @@ class ImagesDS(torch.utils.data.Dataset):
             imgs = self.imgs[experiment][plate][well]
             for i in range(len(imgs)):
                 imgs[i] = self._load_from_buffer(imgs[i])
-                imgs[i] = self._transform(imgs[i], experiment, plate, well, site)
+                imgs[i] = self._transform(imgs[i], experiment, plate, well, i)
 
             imgs_negative_control = deepcopy(self.imgs_negative_controls[experiment][plate]['B02'])
             for i in range(len(imgs_negative_control)):
                 imgs_negative_control[i] = self._load_from_buffer(imgs_negative_control[i])
-                imgs_negative_control[i] = self._transform(imgs_negative_control[i], experiment, plate, well, site)
+                imgs_negative_control[i] = self._transform(imgs_negative_control[i], experiment, plate, well, i)
 
             wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
             well_positive_control = random.sample(wells_positive_control, 1)[0]
             imgs_positive_control = deepcopy(self.imgs_positive_controls[experiment][plate][well_positive_control])
             for i in range(len(imgs_positive_control)):
                 imgs_positive_control[i] = self._load_from_buffer(imgs_positive_control[i])
-                imgs_positive_control[i] = self._transform(imgs_positive_control[i], experiment, plate, well, site)
+                imgs_positive_control[i] = self._transform(imgs_positive_control[i], experiment, plate, well, i)
 
             imgs = np.array(imgs)
             imgs_negative_control = np.array(imgs_negative_control)
