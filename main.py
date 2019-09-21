@@ -25,7 +25,7 @@ warnings.filterwarnings('ignore')
 # torch.manual_seed(0)
 
 parser = argparse.ArgumentParser(description='My parser')
-parser.add_argument('--backbone', choices=['resnet', 'se_resnext', 'efficientnet'], default='se_resnext')
+parser.add_argument('--backbone', choices=['resnet', 'se_resnext', 'efficientnet'], default='resnet')
 parser.add_argument('--debug', default=False, action='store_true')
 parser.add_argument('--experiment_id')
 parser.add_argument('--loss', choices=['softmax', 'arcface'], default='softmax')
@@ -54,7 +54,7 @@ HYPERPARAMS = {
     'validation': args.validation,
     'train_split_by_experiment': False,
     'normalize_experiments': False,
-    'nb_epochs': 10 if (device == 'cpu') else 200,
+    'nb_epochs': 10 if (device == 'cpu') else 100,
     'scheduler': True,
     'momentum': 0.9,
     'nesterov': True,
