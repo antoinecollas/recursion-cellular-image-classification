@@ -42,6 +42,13 @@ lr = args.lr
 
 if experiment_id is None:
     experiment_id = str(datetime.datetime.now().time()).replace(':', '-').split('.')[0] + '_' + backbone
+    path_model_step_1 = 'models/model_'+experiment_id+'.pth'
+else:
+    path_model_step_1 = 'models/model_'+experiment_id+'.pth'
+    if not os.path.exists(path_model_step_1):
+        print('ERROR: the model corresponding to this experiment id doesn\'t exist !')
+        import sys
+        sys.exit(1)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -125,7 +132,6 @@ optimizer = torch.optim.SGD(parameters, lr=HYPERPARAMS['lr'], \
     weight_decay=0)
 model = torch.nn.DataParallel(model)
 
-path_model_step_1 = 'models/model_'+experiment_id+'.pth'
 if not os.path.exists(path_model_step_1):
     print('########## TRAINING ##########')
 
