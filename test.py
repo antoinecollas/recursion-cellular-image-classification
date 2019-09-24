@@ -2,6 +2,7 @@ from tqdm import tqdm
 
 import pandas as pd
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 import torch
 import torch.nn.functional as F
@@ -33,15 +34,6 @@ def test(df_test, ds_test, plate_groups, experiment_type, model, bs, num_workers
     preds[mask] = 0
     preds = rescale(preds)
 
-    results = np.zeros(preds.shape[0])
-    for i in range(preds.shape[0]):
-        max_per_row_idx = np.argmax(preds, axis=1)
-        max_row_idx = np.argmax(preds[np.arange(len(preds)), max_per_row_idx])
-        max_column_idx = max_per_row_idx[max_row_idx]
-        max_prob = preds[max_row_idx, max_column_idx]
-        results[max_row_idx] = max_column_idx
-        preds[:, max_column_idx] = 0
-        preds[max_row_idx, :] = 0
-        preds = rescale(preds)
+    _, results = linear_sum_assignment(-preds)
 
     return results
