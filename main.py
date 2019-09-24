@@ -53,7 +53,7 @@ else:
 HYPERPARAMS = {
     'validation': args.validation,
     'train_split_by_experiment': False,
-    'normalize_experiments': False,
+    'normalize_by_experiment': False,
     'nb_epochs': 10 if (device == 'cpu') else 100,
     'scheduler': True,
     'momentum': 0.9,
@@ -110,7 +110,7 @@ print('Number of GPUs used:', torch.cuda.device_count())
 def get_celltype(experiment):
     return experiment.split('-')[0]
 
-if HYPERPARAMS['normalize_experiments']:
+if HYPERPARAMS['normalize_by_experiment']:
     with open('stats_experiments.pickle', 'rb') as f:
         stats_experiments = pickle.load(f)
 else:
