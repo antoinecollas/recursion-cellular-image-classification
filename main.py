@@ -60,7 +60,7 @@ else:
 HYPERPARAMS = {
     'validation': args.validation,
     'train_split_by_experiment': False,
-    'normalize_by_experiment': False,
+    'normalize_by_experiment': True,
     'nb_epochs': 10 if (device == 'cpu') else 100,
     'scheduler': True,
     'momentum': 0.9,
