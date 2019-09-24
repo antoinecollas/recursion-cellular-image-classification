@@ -7,7 +7,7 @@ import pretrainedmodels
 from efficientnet_pytorch import EfficientNet
 
 class CustomNN(nn.Module):
-    def __init__(self, backbone, nb_classes, loss, hidden_neurons=2048, dropout=0.4):
+    def __init__(self, backbone, nb_classes, loss, hidden_neurons=1024, dropout=0.4):
         super(CustomNN, self).__init__()
 
         if backbone == 'resnet':
