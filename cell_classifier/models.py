@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torchvision import models
 
 class TwoSitesNN(nn.Module):
-    def __init__(self, pretrained, nb_classes, loss, size_features=1024, dropout=0.3):
+    def __init__(self, pretrained, nb_classes, size_features=1024, dropout=0.3):
         super(TwoSitesNN, self).__init__()
 
         self.base_nn = models.resnet50(pretrained=pretrained)
@@ -17,27 +17,15 @@ class TwoSitesNN(nn.Module):
         num_ftrs_cnn = 3*self.base_nn.fc.in_features
         self.base_nn.fc = nn.Identity()
 
-        self.loss = loss
-        if self.loss=='softmax':
-            self.mlp = nn.Sequential(
-                    nn.BatchNorm1d(num_ftrs_cnn),
-                    nn.Dropout(dropout),
-                    nn.Linear(num_ftrs_cnn, size_features),
-                    nn.ReLU(),
-                    nn.BatchNorm1d(size_features),
-                    nn.Dropout(dropout),
-                    nn.Linear(size_features, nb_classes)
-                    )
-        elif self.loss=='arcface':
-            self.mlp = nn.Sequential(
-                    nn.BatchNorm1d(num_ftrs_cnn),
-                    nn.Dropout(dropout),
-                    nn.Linear(num_ftrs_cnn, size_features),
-                    nn.ReLU(),
-                    nn.BatchNorm1d(size_features)
-                    )
-            self.weight = nn.Parameter(torch.FloatTensor(nb_classes, size_features))
-            nn.init.xavier_uniform_(self.weight)
+        self.mlp = nn.Sequential(
+                nn.BatchNorm1d(num_ftrs_cnn),
+                nn.Dropout(dropout),
+                nn.Linear(num_ftrs_cnn, size_features),
+                nn.ReLU(),
+                nn.BatchNorm1d(size_features),
+                nn.Dropout(dropout),
+                nn.Linear(size_features, nb_classes)
+                )
 
     def forward(self, x):
         # x shape: [batch, img/negative_control/positive_control, channel, h, w]
@@ -51,11 +39,7 @@ class TwoSitesNN(nn.Module):
         features_positive_controls = features[:, 2*shape:, :].mean(1)
         features = torch.cat([features_imgs, features_negative_controls, features_positive_controls], dim=1)
 
-        if self.loss=='softmax':
-            output = self.mlp(features)
-        elif self.loss=='arcface':
-            output = self.mlp(features)
-            output = F.linear(F.normalize(output), F.normalize(self.weight)).clamp(-1, 1)
+        output = self.mlp(features)
 
         return output
 

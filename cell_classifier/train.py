@@ -10,8 +10,6 @@ from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.handlers import  EarlyStopping, ModelCheckpoint
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, GradsHistHandler
 
-from loss import ArcFaceLoss
-
 def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_workers, device, debug):
 
     train_loader = torch.utils.data.DataLoader(ds_train, batch_size=hyperparams['bs'], shuffle=True, \
@@ -19,10 +17,7 @@ def train(experiment_id, ds_train, ds_val, model, optimizer, hyperparams, num_wo
     val_loader = torch.utils.data.DataLoader(ds_val, batch_size=hyperparams['bs'], shuffle=True, \
         num_workers=num_workers)
 
-    if hyperparams['loss']=='softmax':
-        criterion = nn.CrossEntropyLoss().to(device)
-    elif hyperparams['loss']=='arcface':
-        criterion = ArcFaceLoss(s=hyperparams['arcface']['s'], m=hyperparams['arcface']['m']).to(device)
+    criterion = nn.CrossEntropyLoss().to(device)
 
     metrics = {
         'loss': Loss(criterion),
