@@ -1,6 +1,7 @@
 board/
 data/
 examples/*
+gcp/*
 models/
 submission*.csv
 *.prof
