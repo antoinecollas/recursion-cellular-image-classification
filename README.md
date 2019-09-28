@@ -20,8 +20,10 @@ conda activate recursion-cellular-image-classification
 ```
 
 ## Data
-Download data from [Kaggle](https://www.kaggle.com/c/recursion-cellular-image-classification/data)
-Unzip train.zip and test.zip
+Download data from [Kaggle](https://www.kaggle.com/c/recursion-cellular-image-classification/data).
+
+Unzip train.zip and test.zip.
+
 Repertory should look like this:
 ```
 data/
