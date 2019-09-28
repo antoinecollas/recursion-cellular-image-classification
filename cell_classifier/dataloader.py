@@ -1,10 +1,6 @@
 import random
 from copy import deepcopy
-from PIL import Image
 from tqdm import tqdm
-import multiprocessing
-import os
-import random
 
 import pandas as pd
 import numpy as np
@@ -12,21 +8,33 @@ import cv2
 import torch
 
 from albumentations.core.composition import Compose
-from albumentations.augmentations.transforms import RandomCrop, ShiftScaleRotate, CenterCrop, VerticalFlip, HorizontalFlip, Normalize
+from albumentations.augmentations.transforms import \
+    RandomCrop, ShiftScaleRotate, CenterCrop, VerticalFlip, HorizontalFlip, \
+    Normalize
+
 
 class ImagesDS(torch.utils.data.Dataset):
-    def __init__(self, df, df_controls, stats_experiments, img_dir, mode, verbose=True, channels=[1,2,3,4,5,6]):
+    def __init__(self,
+                 df,
+                 df_conts,
+                 stats_exps,
+                 img_dir,
+                 mode,
+                 verbose=True,
+                 channels=[1, 2, 3, 4, 5, 6]):
+
         self.records = deepcopy(df).to_records(index=False)
 
-        df_controls = deepcopy(df_controls)
-        mask = (df_controls['well_type']=='negative_control') & (df_controls['well']=='B02')
-        df_negative_controls = df_controls[mask]
-        self.records_negative_controls = df_negative_controls.to_records(index=False)
-        mask = (df_controls['well_type']=='positive_control')
-        df_positive_controls = df_controls[mask]
-        self.records_positive_controls = df_positive_controls.to_records(index=False)
+        df_conts = deepcopy(df_conts)
+        mask = (df_conts['well_type'] == 'negative_cont') & \
+               (df_conts['well'] == 'B02')
+        df_neg_conts = df_conts[mask]
+        self.records_neg_conts = df_neg_conts.to_records(index=False)
+        mask = (df_conts['well_type'] == 'positive_cont')
+        df_pos_conts = df_conts[mask]
+        self.records_pos_conts = df_pos_conts.to_records(index=False)
 
-        self.stats_experiments = stats_experiments
+        self.stats_exps = stats_exps
         self.mode = mode
         self.channels = channels
         self.img_dir = img_dir
@@ -34,7 +42,8 @@ class ImagesDS(torch.utils.data.Dataset):
         self.transform_train = Compose([
             VerticalFlip(p=0.5),
             HorizontalFlip(p=0.5),
-            ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180, p=1.0),
+            ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=180,
+                             p=1.0),
             RandomCrop(height=364, width=364, p=1.0)
             ], p=1.0)
         self.transform_val = Compose([
@@ -43,19 +52,25 @@ class ImagesDS(torch.utils.data.Dataset):
 
         if verbose:
             print()
-        self.imgs = self._load_imgs(self.records, desc='Images', verbose=verbose)
-        self.imgs_negative_controls = self._load_imgs(self.records_negative_controls, \
-            desc='Negative controls', verbose=verbose)
-        self.imgs_positive_controls = self._load_imgs(self.records_positive_controls, \
-            desc='Positive controls', verbose=verbose)
+        self.imgs = self._load_imgs(self.records, desc='Images',
+                                    verbose=verbose)
+        self.imgs_neg_conts = self._load_imgs(self.records_neg_conts,
+                                              desc='Negative conts',
+                                              verbose=verbose)
+        self.imgs_pos_conts = self._load_imgs(self.records_pos_conts,
+                                              desc='Positive conts',
+                                              verbose=verbose)
 
     def _get_img_path(self, records, index, channel, site):
-            experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
-            if (self.mode == 'train') or (self.mode == 'val'):
-                mode = 'train'
-            elif self.mode == 'test':
-                mode = 'test'
-            return '/'.join([self.img_dir, mode, experiment, f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
+        exp = records[index].exp
+        plate = records[index].plate
+        well = records[index].well
+        if (self.mode == 'train') or (self.mode == 'val'):
+            mode = 'train'
+        elif self.mode == 'test':
+            mode = 'test'
+        return '/'.join([self.img_dir, mode, exp,
+                         f'Plate{plate}', f'{well}_s{site}_w{channel}.jpeg'])
 
     def _load_imgs(self, records, desc, verbose):
         imgs = list()
@@ -64,28 +79,32 @@ class ImagesDS(torch.utils.data.Dataset):
         else:
             iterator = range(len(records))
         for index in iterator:
-            paths_site_1 = [self._get_img_path(records, index, ch, site=1) for ch in self.channels]
-            paths_site_2 = [self._get_img_path(records, index, ch, site=2) for ch in self.channels]
-            
+            paths_site_1 = [self._get_img_path(records, index, ch, site=1)
+                            for ch in self.channels]
+            paths_site_2 = [self._get_img_path(records, index, ch, site=2)
+                            for ch in self.channels]
+
             img_site_1, img_site_2 = list(), list()
             for img_path in paths_site_1:
-                with open(img_path,'rb') as f: 
+                with open(img_path, 'rb') as f:
                     img_site_1.append(f.read())
-    
+
             for img_path in paths_site_2:
-                with open(img_path,'rb') as f: 
+                with open(img_path, 'rb') as f:
                     img_site_2.append(f.read())
-    
+
             imgs.append([img_site_1, img_site_2])
 
         imgs_dict = dict()
         for index in range(len(records)):
-            experiment, plate, well = records[index].experiment, records[index].plate, records[index].well
-            if not(experiment in imgs_dict):
-                imgs_dict[experiment] = dict()
-            if not(plate in imgs_dict[experiment]):
-                imgs_dict[experiment][plate] = dict()
-            imgs_dict[experiment][plate][well] = imgs[index]
+            exp = records[index].exp
+            plate = records[index].plate
+            well = records[index].well
+            if not(exp in imgs_dict):
+                imgs_dict[exp] = dict()
+            if not(plate in imgs_dict[exp]):
+                imgs_dict[exp][plate] = dict()
+            imgs_dict[exp][plate][well] = imgs[index]
 
         return imgs_dict
 
@@ -93,13 +112,14 @@ class ImagesDS(torch.utils.data.Dataset):
         from matplotlib import pyplot as plt
         import rxrx.io as rio
         import cv2
-        fig = plt.figure()
         for i, img in enumerate(imgs):
             img = np.moveaxis(img, 0, 2)
             height, width, _ = img.shape
-            img = cv2.resize(img, dsize=(512, 512), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(img, dsize=(512, 512),
+                             interpolation=cv2.INTER_CUBIC)
             img_rgb = np.array(rio.convert_tensor_to_rgb(img), dtype='uint8')
-            img_rgb = cv2.resize(img_rgb, dsize=(height, width), interpolation=cv2.INTER_CUBIC)
+            img_rgb = cv2.resize(img_rgb, dsize=(height, width),
+                                 interpolation=cv2.INTER_CUBIC)
             ax = plt.subplot(1, len(imgs), i+1)
             ax.title.set_text(self.mode)
             plt.imshow(img_rgb)
@@ -126,85 +146,94 @@ class ImagesDS(torch.utils.data.Dataset):
         return img
 
     def __getitem__(self, index):
-        experiment, plate, well = self.records[index].experiment, self.records[index].plate, self.records[index].well
-        mean = self.stats_experiments[experiment]['mean']
-        std = self.stats_experiments[experiment]['std']
+        exp = self.records[index].exp
+        plate = self.records[index].plate
+        well = self.records[index].well
+        mean = self.stats_exps[exp]['mean']
+        std = self.stats_exps[exp]['std']
 
         if (self.mode == 'train') or (self.mode == 'val'):
             site = random.randint(0, 1)
-            temp = self.imgs[experiment][plate][well]
-            img = temp[site]
+            img = self.imgs[exp][plate][well][site]
             img = self._load_from_buffer(img)
             img = self._transform(img, mean=mean, std=std)
 
             site = random.randint(0, 1)
-            temp = self.imgs_negative_controls[experiment][plate]['B02']
-            img_negative_control = temp[site]
-            img_negative_control = self._load_from_buffer(img_negative_control)
-            img_negative_control = self._transform(img_negative_control, mean=mean, std=std)
+            img_neg_cont = self.imgs_neg_conts
+            img_neg_cont = img_neg_cont[exp][plate]['B02'][site]
+            img_neg_cont = self._load_from_buffer(img_neg_cont)
+            img_neg_cont = self._transform(img_neg_cont, mean=mean, std=std)
 
-            wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
-            well_positive_control = random.sample(wells_positive_control, 1)[0]
+            wells_pos_cont = list(self.imgs_pos_conts[exp][plate].keys())
+            well_pos_cont = random.sample(wells_pos_cont, 1)[0]
             site = random.randint(0, 1)
-            temp = self.imgs_positive_controls[experiment][plate][well_positive_control]
-            img_positive_control = temp[site]
-            img_positive_control = self._load_from_buffer(img_positive_control)
-            img_positive_control = self._transform(img_positive_control, mean=mean, std=std)
+            img_pos_cont = self.imgs_pos_conts
+            img_pos_cont = img_pos_cont[exp][plate][well_pos_cont][site]
+            img_pos_cont = self._load_from_buffer(img_pos_cont)
+            img_pos_cont = self._transform(img_pos_cont, mean=mean, std=std)
 
             # self._show_imgs([img, img_transformed])
 
-            img = torch.Tensor(np.stack([img, img_negative_control, img_positive_control]))
+            img = torch.Tensor(np.stack([img, img_neg_cont,
+                                         img_pos_cont]))
 
             return img, int(self.records[index].sirna)
 
         elif (self.mode == 'test'):
-            imgs = self.imgs[experiment][plate][well]
+            imgs = self.imgs[exp][plate][well]
             for i in range(len(imgs)):
                 imgs[i] = self._load_from_buffer(imgs[i])
                 imgs[i] = self._transform(imgs[i], mean=mean, std=std)
 
-            imgs_negative_control = deepcopy(self.imgs_negative_controls[experiment][plate]['B02'])
-            for i in range(len(imgs_negative_control)):
-                imgs_negative_control[i] = self._load_from_buffer(imgs_negative_control[i])
-                imgs_negative_control[i] = self._transform(imgs_negative_control[i], mean=mean, std=std)
+            imgs_neg_cont = deepcopy(self.imgs_neg_conts[exp][plate]['B02'])
+            for i in range(len(imgs_neg_cont)):
+                imgs_neg_cont[i] = self._load_from_buffer(imgs_neg_cont[i])
+                imgs_neg_cont[i] = self._transform(imgs_neg_cont[i],
+                                                   mean=mean, std=std)
 
-            wells_positive_control = list(self.imgs_positive_controls[experiment][plate].keys())
-            well_positive_control = random.sample(wells_positive_control, 1)[0]
-            imgs_positive_control = deepcopy(self.imgs_positive_controls[experiment][plate][well_positive_control])
-            for i in range(len(imgs_positive_control)):
-                imgs_positive_control[i] = self._load_from_buffer(imgs_positive_control[i])
-                imgs_positive_control[i] = self._transform(imgs_positive_control[i], mean=mean, std=std)
+            wells_pos_cont = list(self.imgs_pos_conts[exp][plate].keys())
+            well_pos_cont = random.sample(wells_pos_cont, 1)[0]
+            temp = self.imgs_pos_conts[exp][plate][well_pos_cont]
+            imgs_pos_cont = deepcopy(temp)
+            for i in range(len(imgs_pos_cont)):
+                imgs_pos_cont[i] = self._load_from_buffer(imgs_pos_cont[i])
+                imgs_pos_cont[i] = self._transform(imgs_pos_cont[i],
+                                                   mean=mean, std=std)
 
             imgs = np.array(imgs)
-            imgs_negative_control = np.array(imgs_negative_control)
-            imgs_positive_control = np.array(imgs_positive_control)
-            imgs = torch.Tensor(np.concatenate([imgs, imgs_negative_control, imgs_positive_control]))
+            imgs_neg_cont = np.array(imgs_neg_cont)
+            imgs_pos_cont = np.array(imgs_pos_cont)
+            temp = np.concatenate([imgs, imgs_neg_cont, imgs_pos_cont])
+            imgs = torch.Tensor(temp)
 
             return imgs, self.records[index].id_code
 
     def __len__(self):
         return self.len
 
+
 def train_test_split(df, random_state):
     random.seed(random_state)
     df_train, df_val = list(), list()
     for celltype in df['celltype'].unique():
-        df_celltype = df[df['celltype']==celltype]
-        experiments = df_celltype['experiment'].unique()
-        nb_experiments_val = len(experiments)//3
-        random.shuffle(experiments)
-        experiments_val = experiments[:nb_experiments_val]
+        df_celltype = df[df['celltype'] == celltype]
+        exps = df_celltype['exp'].unique()
+        nb_exps_val = len(exps)//3
+        random.shuffle(exps)
+        exps_val = exps[:nb_exps_val]
         mask_val = np.zeros(len(df_celltype), dtype=np.uint8)
-        for experiment_val in experiments_val:
-            mask_val = mask_val + (df_celltype['experiment']==experiment_val)
-        mask_val = (mask_val==1)
+        for exp_val in exps_val:
+            mask_val = mask_val + (df_celltype['exp'] == exp_val)
+        mask_val = (mask_val == 1)
         mask_train = ~mask_val
         df_celltype_train = df_celltype[mask_train]
         df_celltype_val = df_celltype[mask_val]
         df_train.append(df_celltype_train)
         df_val.append(df_celltype_val)
     df_train = pd.concat(df_train)
-    df_train = df_train.sample(frac=1, random_state=random_state).reset_index(drop=True)
+    df_train = df_train.sample(frac=1, random_state=random_state) \
+                       .reset_index(drop=True)
     df_val = pd.concat(df_val)
-    df_val = df_val.sample(frac=1, random_state=random_state).reset_index(drop=True)
+    df_val = df_val.sample(frac=1, random_state=random_state) \
+                   .reset_index(drop=True)
     return df_train, df_val

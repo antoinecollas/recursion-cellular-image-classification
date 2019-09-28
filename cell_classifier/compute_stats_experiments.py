@@ -1,8 +1,9 @@
-import os, glob, pickle
+import glob
+import pickle
 from tqdm import tqdm
 import numpy as np
 import cv2
-import pandas as pd
+
 
 def compute_mean_std(paths, mean=None, std=None):
     nb_channels = 6
@@ -22,12 +23,13 @@ def compute_mean_std(paths, mean=None, std=None):
     std = np.sqrt((sum_x2/count) - mean**2)
     return mean, std
 
+
 FILENAME = 'stats_experiments.pickle'
 
 experiments_train = glob.glob('data/train/*/', recursive=True)
-experiments_train = [experiment.split('/')[-2] for experiment in experiments_train]
+experiments_train = [exp.split('/')[-2] for exp in experiments_train]
 experiments_test = glob.glob('data/test/*/', recursive=True)
-experiments_test = [experiment.split('/')[-2] for experiment in experiments_test]
+experiments_test = [exp.split('/')[-2] for exp in experiments_test]
 experiments = experiments_train + experiments_test
 
 stats_experiments = dict()
