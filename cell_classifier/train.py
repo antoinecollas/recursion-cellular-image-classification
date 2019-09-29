@@ -116,7 +116,8 @@ def train(experiment_id,
     def output_transform(loss):
         return {'loss': loss}
 
-    log_handler = OutputHandler('training', output_transform)
+    log_handler = OutputHandler(tag='training',
+                                output_transform=output_transform)
     tb_logger.attach(trainer,
                      log_handler,
                      event_name=Events.ITERATION_COMPLETED)

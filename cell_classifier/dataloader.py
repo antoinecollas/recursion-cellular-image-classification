@@ -26,11 +26,11 @@ class ImagesDS(torch.utils.data.Dataset):
         self.records = deepcopy(df).to_records(index=False)
 
         df_conts = deepcopy(df_controls)
-        mask = (df_conts['well_type'] == 'negative_cont') & \
+        mask = (df_conts['well_type'] == 'negative_control') & \
                (df_conts['well'] == 'B02')
         df_neg_conts = df_conts[mask]
         self.records_neg_conts = df_neg_conts.to_records(index=False)
-        mask = (df_conts['well_type'] == 'positive_cont')
+        mask = (df_conts['well_type'] == 'positive_control')
         df_pos_conts = df_conts[mask]
         self.records_pos_conts = df_pos_conts.to_records(index=False)
 
@@ -55,14 +55,14 @@ class ImagesDS(torch.utils.data.Dataset):
         self.imgs = self._load_imgs(self.records, desc='Images',
                                     verbose=verbose)
         self.imgs_neg_conts = self._load_imgs(self.records_neg_conts,
-                                              desc='Negative conts',
+                                              desc='Negative controls',
                                               verbose=verbose)
         self.imgs_pos_conts = self._load_imgs(self.records_pos_conts,
-                                              desc='Positive conts',
+                                              desc='Positive controls',
                                               verbose=verbose)
 
     def _get_img_path(self, records, index, channel, site):
-        exp = records[index].exp
+        exp = records[index].experiment
         plate = records[index].plate
         well = records[index].well
         if (self.mode == 'train') or (self.mode == 'val'):
@@ -97,7 +97,7 @@ class ImagesDS(torch.utils.data.Dataset):
 
         imgs_dict = dict()
         for index in range(len(records)):
-            exp = records[index].exp
+            exp = records[index].experiment
             plate = records[index].plate
             well = records[index].well
             if not(exp in imgs_dict):
@@ -146,7 +146,7 @@ class ImagesDS(torch.utils.data.Dataset):
         return img
 
     def __getitem__(self, index):
-        exp = self.records[index].exp
+        exp = self.records[index].experiment
         plate = self.records[index].plate
         well = self.records[index].well
         mean = self.stats_exps[exp]['mean']
