@@ -7,16 +7,17 @@ https://www.kaggle.com/c/recursion-cellular-image-classification/
 
 ## Installation
 
+Create environment:
+
+```
+conda create -n recursion-cellular-image-classification python=3.7.3
+conda activate recursion-cellular-image-classification
+```
+
 Install packages:
 
 ```
-pip install -r requirements.txt
-```
-
-Activate environment:
-
-```
-conda activate recursion-cellular-image-classification
+pip install -r requirement.txt
 ```
 
 ## Data

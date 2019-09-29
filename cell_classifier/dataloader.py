@@ -16,7 +16,7 @@ from albumentations.augmentations.transforms import \
 class ImagesDS(torch.utils.data.Dataset):
     def __init__(self,
                  df,
-                 df_conts,
+                 df_controls,
                  stats_exps,
                  img_dir,
                  mode,
@@ -25,7 +25,7 @@ class ImagesDS(torch.utils.data.Dataset):
 
         self.records = deepcopy(df).to_records(index=False)
 
-        df_conts = deepcopy(df_conts)
+        df_conts = deepcopy(df_controls)
         mask = (df_conts['well_type'] == 'negative_cont') & \
                (df_conts['well'] == 'B02')
         df_neg_conts = df_conts[mask]
