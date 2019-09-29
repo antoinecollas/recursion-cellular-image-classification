@@ -17,7 +17,7 @@ class ImagesDS(torch.utils.data.Dataset):
     def __init__(self,
                  df,
                  df_controls,
-                 stats_exps,
+                 stats_experiments,
                  img_dir,
                  mode,
                  verbose=True,
@@ -34,7 +34,7 @@ class ImagesDS(torch.utils.data.Dataset):
         df_pos_conts = df_conts[mask]
         self.records_pos_conts = df_pos_conts.to_records(index=False)
 
-        self.stats_exps = stats_exps
+        self.stats_exps = stats_experiments
         self.mode = mode
         self.channels = channels
         self.img_dir = img_dir
